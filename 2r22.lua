@@ -1,602 +1,466 @@
-
 --!native
 --!optimize 2
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-
+local HttpService = game:GetService("HttpService")
+local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
 local NazuroUI = {}
 
--- Modern color scheme with proper contrast
+-- Theme configuration
 NazuroUI.Theme = {
-    Background = Color3.fromRGB(15, 15, 20),
-    Surface = Color3.fromRGB(25, 25, 35),
-    SurfaceElevated = Color3.fromRGB(35, 35, 45),
-    Primary = Color3.fromRGB(120, 120, 255),
-    PrimaryHover = Color3.fromRGB(140, 140, 255),
-    Success = Color3.fromRGB(80, 200, 120),
-    Warning = Color3.fromRGB(255, 180, 60),
-    Error = Color3.fromRGB(255, 100, 100),
-    Text = Color3.fromRGB(255, 255, 255),
-    TextSecondary = Color3.fromRGB(160, 160, 170),
-    TextMuted = Color3.fromRGB(120, 120, 130),
-    Border = Color3.fromRGB(45, 45, 55),
-    BorderHover = Color3.fromRGB(60, 60, 70),
-    
-    -- Animation settings
-    FastTween = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-    MediumTween = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-    SlowTween = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    Primary = Color3.fromRGB(20, 30, 50), -- Deep blue
+    Secondary = Color3.fromRGB(30, 40, 60), -- Slightly lighter blue
+    Accent = Color3.fromRGB(0, 200, 255), -- Cyan
+    Text = Color3.fromRGB(255, 255, 255), -- White
+    SubText = Color3.fromRGB(200, 200, 200), -- Light gray
+    Error = Color3.fromRGB(255, 80, 80), -- Red for errors
+    TweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
+    ConfigFolder = "NazuroUI/Configs/"
 }
 
+-- File system stubs
+local function SafeMakeFolder(path)
+    if not isfolder(path) then
+        local success, err = pcall(makefolder, path)
+        if not success then warn("Failed to create folder: " .. path .. " | Error: " .. tostring(err)) end
+    end
+end
+
+local function SafeWriteFile(filepath, content)
+    local success, err = pcall(writefile, filepath, content)
+    if not success then warn("Failed to write file: " .. filepath .. " | Error: " .. tostring(err)) end
+end
+
+local function SafeReadFile(filepath)
+    if isfile(filepath) then
+        local success, content = pcall(readfile, filepath)
+        if success then return content end
+        warn("Failed to read file: " .. filepath .. " | Error: " .. tostring(content))
+    end
+    return nil
+end
+
+SafeMakeFolder(NazuroUI.Theme.ConfigFolder)
+
+-- Load configuration
+local ConfigFile = NazuroUI.Theme.ConfigFolder .. "Settings.json"
+local Config = { Toggles = {} }
+if isfile(ConfigFile) then
+    local content = SafeReadFile(ConfigFile)
+    if content then
+        local success, decoded = pcall(HttpService.JSONDecode, HttpService, content)
+        if success then Config = decoded end
+    end
+else
+    SafeWriteFile(ConfigFile, HttpService:JSONEncode(Config))
+end
+
 -- Utility functions
-local function CreateCorner(parent, radius)
+local function RoundedCorners(instance, radius)
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, radius or 8)
-    corner.Parent = parent
+    corner.Parent = instance
     return corner
 end
 
-local function CreateStroke(parent, thickness, color, transparency)
+local function AddStroke(instance, thickness, color, transparency)
     local stroke = Instance.new("UIStroke")
-    stroke.Thickness = thickness or 1
-    stroke.Color = color or NazuroUI.Theme.Border
+    stroke.Thickness = thickness or 2
+    stroke.Color = color or NazuroUI.Theme.Accent
     stroke.Transparency = transparency or 0
     stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    stroke.Parent = parent
+    stroke.Parent = instance
     return stroke
 end
 
-local function CreateShadow(parent, size, transparency)
-    local shadow = Instance.new("Frame")
-    shadow.Name = "Shadow"
-    shadow.Size = UDim2.new(1, size * 2, 1, size * 2)
-    shadow.Position = UDim2.new(0, -size, 0, -size)
-    shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    shadow.BackgroundTransparency = transparency or 0.7
-    shadow.ZIndex = parent.ZIndex - 1
-    CreateCorner(shadow, 12)
-    shadow.Parent = parent
-    return shadow
+local function AddGradient(instance)
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, NazuroUI.Theme.Primary),
+        ColorSequenceKeypoint.new(1, NazuroUI.Theme.Secondary)
+    })
+    gradient.Rotation = 45
+    gradient.Parent = instance
+    return gradient
 end
 
-function NazuroUI:CreateWindow(config)
-    config = config or {}
-    local title = config.Title or "Nazuro UI"
-    local subtitle = config.Subtitle or "Modern Interface"
-    local size = config.Size or {600, 400}
-    
-    -- Main ScreenGui
-    local NazuroScreen = Instance.new("ScreenGui")
-    NazuroScreen.Name = "NazuroUI_" .. tostring(tick())
-    NazuroScreen.ResetOnSpawn = false
-    NazuroScreen.ZIndexBehavior = Enum.ZIndexBehavior.Global
-    NazuroScreen.Parent = game:GetService("CoreGui")
-    
-    -- Main Window Frame - Properly centered
-    local MainWindow = Instance.new("Frame")
-    MainWindow.Name = "MainWindow"
-    MainWindow.Size = UDim2.new(0, size[1], 0, size[2])
-    MainWindow.Position = UDim2.new(0.5, -size[1]/2, 0.5, -size[2]/2) -- Perfect centering
-    MainWindow.AnchorPoint = Vector2.new(0.5, 0.5)
-    MainWindow.BackgroundColor3 = NazuroUI.Theme.Background
-    MainWindow.BorderSizePixel = 0
-    MainWindow.ClipsDescendants = true
-    MainWindow.Parent = NazuroScreen
-    
-    CreateCorner(MainWindow, 12)
-    CreateStroke(MainWindow, 1, NazuroUI.Theme.Border, 0.3)
-    CreateShadow(MainWindow, 20, 0.8)
-    
-    -- Title Bar
+-- Create window
+function NazuroUI:CreateWindow(title, icon)
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "NazuroUI_" .. tick()
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.Parent = CoreGui
+    if RunService:IsStudio() then ScreenGui.Parent = LocalPlayer.PlayerGui end
+
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Size = UDim2.new(0, 600, 0, 400)
+    MainFrame.Position = UDim2.new(0.5, -300, 0.5, -200)
+    MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    MainFrame.BackgroundColor3 = NazuroUI.Theme.Primary
+    MainFrame.ClipsDescendants = true
+    RoundedCorners(MainFrame)
+    AddStroke(MainFrame, 2, NazuroUI.Theme.Accent, 0.7)
+    AddGradient(MainFrame)
+    MainFrame.Parent = ScreenGui
+
     local TitleBar = Instance.new("Frame")
-    TitleBar.Name = "TitleBar"
     TitleBar.Size = UDim2.new(1, 0, 0, 50)
-    TitleBar.Position = UDim2.new(0, 0, 0, 0)
-    TitleBar.BackgroundColor3 = NazuroUI.Theme.Surface
-    TitleBar.BorderSizePixel = 0
-    TitleBar.Parent = MainWindow
-    
-    CreateCorner(TitleBar, 12)
-    
-    -- Title bar bottom border
-    local TitleBorder = Instance.new("Frame")
-    TitleBorder.Name = "TitleBorder"
-    TitleBorder.Size = UDim2.new(1, 0, 0, 1)
-    TitleBorder.Position = UDim2.new(0, 0, 1, -1)
-    TitleBorder.BackgroundColor3 = NazuroUI.Theme.Border
-    TitleBorder.BorderSizePixel = 0
-    TitleBorder.Parent = TitleBar
-    
-    -- Title Text
-    local TitleText = Instance.new("TextLabel")
-    TitleText.Name = "TitleText"
-    TitleText.Size = UDim2.new(1, -20, 0, 25)
-    TitleText.Position = UDim2.new(0, 15, 0, 5)
-    TitleText.BackgroundTransparency = 1
-    TitleText.Text = title
-    TitleText.TextColor3 = NazuroUI.Theme.Text
-    TitleText.TextSize = 16
-    TitleText.Font = Enum.Font.GothamSemibold
-    TitleText.TextXAlignment = Enum.TextXAlignment.Left
-    TitleText.Parent = TitleBar
-    
-    -- Subtitle Text
-    local SubtitleText = Instance.new("TextLabel")
-    SubtitleText.Name = "SubtitleText"
-    SubtitleText.Size = UDim2.new(1, -20, 0, 15)
-    SubtitleText.Position = UDim2.new(0, 15, 0, 28)
-    SubtitleText.BackgroundTransparency = 1
-    SubtitleText.Text = subtitle
-    SubtitleText.TextColor3 = NazuroUI.Theme.TextSecondary
-    SubtitleText.TextSize = 12
-    SubtitleText.Font = Enum.Font.Gotham
-    SubtitleText.TextXAlignment = Enum.TextXAlignment.Left
-    SubtitleText.Parent = TitleBar
-    
-    -- Close Button
-    local CloseButton = Instance.new("TextButton")
-    CloseButton.Name = "CloseButton"
-    CloseButton.Size = UDim2.new(0, 30, 0, 30)
-    CloseButton.Position = UDim2.new(1, -40, 0, 10)
-    CloseButton.BackgroundColor3 = NazuroUI.Theme.Error
-    CloseButton.BackgroundTransparency = 0.8
-    CloseButton.Text = "✕"
-    CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    CloseButton.TextSize = 14
-    CloseButton.Font = Enum.Font.GothamSemibold
-    CloseButton.AutoButtonColor = false
-    CloseButton.Parent = TitleBar
-    
-    CreateCorner(CloseButton, 6)
-    
-    -- Close button hover effect
-    CloseButton.MouseEnter:Connect(function()
-        TweenService:Create(CloseButton, NazuroUI.Theme.FastTween, {
-            BackgroundTransparency = 0.2
-        }):Play()
-    end)
-    
-    CloseButton.MouseLeave:Connect(function()
-        TweenService:Create(CloseButton, NazuroUI.Theme.FastTween, {
-            BackgroundTransparency = 0.8
-        }):Play()
-    end)
-    
-    CloseButton.MouseButton1Click:Connect(function()
-        TweenService:Create(MainWindow, NazuroUI.Theme.MediumTween, {
-            Size = UDim2.new(0, 0, 0, 0),
-            Position = UDim2.new(0.5, 0, 0.5, 0)
-        }):Play()
-        
-        wait(0.25)
-        NazuroScreen:Destroy()
-    end)
-    
-    -- Tab Container
-    local TabContainer = Instance.new("Frame")
-    TabContainer.Name = "TabContainer"
-    TabContainer.Size = UDim2.new(1, 0, 1, -50)
-    TabContainer.Position = UDim2.new(0, 0, 0, 50)
-    TabContainer.BackgroundTransparency = 1
-    TabContainer.Parent = MainWindow
-    
-    -- Tab Navigation (Left Side)
-    local TabNavigation = Instance.new("Frame")
-    TabNavigation.Name = "TabNavigation"
-    TabNavigation.Size = UDim2.new(0, 180, 1, 0)
-    TabNavigation.Position = UDim2.new(0, 0, 0, 0)
-    TabNavigation.BackgroundColor3 = NazuroUI.Theme.Surface
-    TabNavigation.BorderSizePixel = 0
-    TabNavigation.Parent = TabContainer
-    
-    CreateCorner(TabNavigation, 0)
-    
-    -- Tab navigation border
-    local NavBorder = Instance.new("Frame")
-    NavBorder.Name = "NavBorder"
-    NavBorder.Size = UDim2.new(0, 1, 1, 0)
-    NavBorder.Position = UDim2.new(1, -1, 0, 0)
-    NavBorder.BackgroundColor3 = NazuroUI.Theme.Border
-    NavBorder.BorderSizePixel = 0
-    NavBorder.Parent = TabNavigation
-    
-    -- Tab Content Area
-    local TabContent = Instance.new("Frame")
-    TabContent.Name = "TabContent"
-    TabContent.Size = UDim2.new(1, -180, 1, 0)
-    TabContent.Position = UDim2.new(0, 180, 0, 0)
-    TabContent.BackgroundColor3 = NazuroUI.Theme.Background
-    TabContent.BorderSizePixel = 0
-    TabContent.Parent = TabContainer
-    
-    -- Tab Navigation Layout
-    local NavLayout = Instance.new("UIListLayout")
-    NavLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    NavLayout.Padding = UDim.new(0, 2)
-    NavLayout.Parent = TabNavigation
-    
-    local NavPadding = Instance.new("UIPadding")
-    NavPadding.PaddingTop = UDim.new(0, 10)
-    NavPadding.PaddingBottom = UDim.new(0, 10)
-    NavPadding.PaddingLeft = UDim.new(0, 10)
-    NavPadding.PaddingRight = UDim.new(0, 10)
-    NavPadding.Parent = TabNavigation
-    
-    -- Drag functionality with smooth movement
-    local dragging = false
-    local dragInput = nil
-    local dragStart = nil
-    local startPos = nil
-    
+    TitleBar.BackgroundColor3 = NazuroUI.Theme.Secondary
+    RoundedCorners(TitleBar, 6)
+    TitleBar.Parent = MainFrame
+
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Size = UDim2.new(1, -60, 1, 0)
+    TitleLabel.Position = UDim2.new(0, 50, 0, 0)
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Text = title or "Nazuro UI"
+    TitleLabel.TextColor3 = NazuroUI.Theme.Text
+    TitleLabel.TextSize = 20
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TitleLabel.Parent = TitleBar
+
+    local TitleIcon = Instance.new("ImageLabel")
+    TitleIcon.Size = UDim2.new(0, 30, 0, 30)
+    TitleIcon.Position = UDim2.new(0, 10, 0.5, -15)
+    TitleIcon.BackgroundTransparency = 1
+    TitleIcon.Image = icon or "rbxassetid://7072706764"
+    TitleIcon.Parent = TitleBar
+
+    local TabButtons = Instance.new("Frame")
+    TabButtons.Size = UDim2.new(0, 150, 1, -50)
+    TabButtons.Position = UDim2.new(0, 0, 0, 50)
+    TabButtons.BackgroundColor3 = NazuroUI.Theme.Secondary
+    RoundedCorners(TabButtons, 6)
+    TabButtons.Parent = MainFrame
+
+    local TabButtonsLayout = Instance.new("UIListLayout")
+    TabButtonsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    TabButtonsLayout.Padding = UDim.new(0, 10)
+    TabButtonsLayout.Parent = TabButtons
+
+    local TabButtonsPadding = Instance.new("UIPadding")
+    TabButtonsPadding.PaddingLeft = UDim.new(0, 10)
+    TabButtonsPadding.PaddingTop = UDim.new(0, 10)
+    TabButtonsPadding.Parent = TabButtons
+
+    local ContentFrame = Instance.new("Frame")
+    ContentFrame.Size = UDim2.new(1, -150, 1, -50)
+    ContentFrame.Position = UDim2.new(0, 150, 0, 50)
+    ContentFrame.BackgroundTransparency = 1
+    ContentFrame.Parent = MainFrame
+
+    local TabPageLayout = Instance.new("UIPageLayout")
+    TabPageLayout.EasingStyle = Enum.EasingStyle.Sine
+    TabPageLayout.TweenTime = 0.3
+    TabPageLayout.Parent = ContentFrame
+
+    -- Dragging functionality
+    local dragging, dragInput, dragStart, startPos
     TitleBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
-            startPos = MainWindow.Position
-            
+            startPos = MainFrame.Position
             input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
             end)
         end
     end)
-    
     TitleBar.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
             dragInput = input
         end
     end)
-    
     UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
             local delta = input.Position - dragStart
-            local newPos = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
-            MainWindow.Position = newPos
+            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
     end)
-    
-    -- Window opening animation
-    MainWindow.Size = UDim2.new(0, 0, 0, 0)
-    MainWindow.Position = UDim2.new(0.5, 0, 0.5, 0)
-    
-    TweenService:Create(MainWindow, NazuroUI.Theme.SlowTween, {
-        Size = UDim2.new(0, size[1], 0, size[2]),
-        Position = UDim2.new(0.5, -size[1]/2, 0.5, -size[2]/2)
-    }):Play()
-    
-    local Window = {
-        Tabs = {},
-        CurrentTab = nil
-    }
-    
-    function Window:CreateTab(config)
-        config = config or {}
-        local name = config.Name or "Tab"
-        local icon = config.Icon or "📄"
-        
-        -- Tab Button
+
+    -- Notification system
+    local function CreateNotification(options)
+        local notification = Instance.new("Frame")
+        notification.Size = UDim2.new(0, 250, 0, 80)
+        notification.Position = UDim2.new(1, -270, 1, -100)
+        notification.BackgroundColor3 = NazuroUI.Theme.Secondary
+        notification.Parent = ScreenGui
+        RoundedCorners(notification, 6)
+        AddStroke(notification, 1, NazuroUI.Theme.Accent, 0.5)
+
+        local title = Instance.new("TextLabel")
+        title.Size = UDim2.new(1, -10, 0, 20)
+        title.Position = UDim2.new(0, 5, 0, 5)
+        title.Text = options.Title or "Notification"
+        title.TextColor3 = NazuroUI.Theme.Text
+        title.TextSize = 16
+        title.Font = Enum.Font.GothamBold
+        title.BackgroundTransparency = 1
+        title.TextXAlignment = Enum.TextXAlignment.Left
+        title.Parent = notification
+
+        local content = Instance.new("TextLabel")
+        content.Size = UDim2.new(1, -10, 0, 50)
+        content.Position = UDim2.new(0, 5, 0, 25)
+        content.Text = options.Content or "No content"
+        content.TextColor3 = NazuroUI.Theme.SubText
+        content.TextSize = 14
+        content.Font = Enum.Font.Gotham
+        content.BackgroundTransparency = 1
+        content.TextXAlignment = Enum.TextXAlignment.Left
+        content.TextWrapped = true
+        content.Parent = notification
+
+        TweenService:Create(notification, NazuroUI.Theme.TweenInfo, {Position = UDim2.new(1, -10, 1, -100)}):Play()
+        task.spawn(function()
+            wait(options.Duration or 5)
+            TweenService:Create(notification, NazuroUI.Theme.TweenInfo, {Position = UDim2.new(1, 270, 1, -100)}):Play()
+            wait(0.3)
+            notification:Destroy()
+        end)
+    end
+
+    local Window = {}
+
+    -- Update tab visuals
+    local function UpdateTabVisuals(selectedButton)
+        for _, button in ipairs(TabButtons:GetChildren()) do
+            if button:IsA("TextButton") then
+                local isSelected = button == selectedButton
+                TweenService:Create(button, NazuroUI.Theme.TweenInfo, {
+                    BackgroundTransparency = isSelected and 0 or 0.4,
+                    Position = UDim2.new(0, isSelected and 10 or 5, 0, button.Position.Y.Offset)
+                }):Play()
+                TweenService:Create(button.ImageLabel, NazuroUI.Theme.TweenInfo, {
+                    ImageTransparency = isSelected and 0 or 0.4
+                }):Play()
+                TweenService:Create(button.TextLabel, NazuroUI.Theme.TweenInfo, {
+                    TextTransparency = isSelected and 0 or 0.4
+                }):Play()
+                local stroke = button:FindFirstChild("UIStroke") or AddStroke(button, 2, NazuroUI.Theme.Text, 1)
+                stroke.Enabled = isSelected
+            end
+        end
+    end
+
+    function Window:CreateTab(name, icon)
         local TabButton = Instance.new("TextButton")
         TabButton.Name = name
-        TabButton.Size = UDim2.new(1, 0, 0, 35)
-        TabButton.BackgroundColor3 = NazuroUI.Theme.SurfaceElevated
-        TabButton.BackgroundTransparency = 1
+        TabButton.Size = UDim2.new(1, -20, 0, 40)
+        TabButton.Position = UDim2.new(0, 10, 0, 0)
+        TabButton.BackgroundColor3 = NazuroUI.Theme.Secondary
+        TabButton.BackgroundTransparency = 0.4
         TabButton.Text = ""
         TabButton.AutoButtonColor = false
-        TabButton.Parent = TabNavigation
-        
-        CreateCorner(TabButton, 6)
-        
-        -- Tab Icon
-        local TabIcon = Instance.new("TextLabel")
-        TabIcon.Name = "Icon"
-        TabIcon.Size = UDim2.new(0, 20, 0, 20)
-        TabIcon.Position = UDim2.new(0, 10, 0.5, -10)
+        RoundedCorners(TabButton, 6)
+        TabButton.Parent = TabButtons
+        TabButton.LayoutOrder = #TabButtons:GetChildren()
+
+        local TabIcon = Instance.new("ImageLabel")
+        TabIcon.Size = UDim2.new(0, 24, 0, 24)
+        TabIcon.Position = UDim2.new(0, 5, 0.5, -12)
         TabIcon.BackgroundTransparency = 1
-        TabIcon.Text = icon
-        TabIcon.TextColor3 = NazuroUI.Theme.TextSecondary
-        TabIcon.TextSize = 16
-        TabIcon.Font = Enum.Font.Gotham
-        TabIcon.TextXAlignment = Enum.TextXAlignment.Center
-        TabIcon.TextYAlignment = Enum.TextYAlignment.Center
+        TabIcon.Image = icon or "rbxassetid://7072706764"
+        TabIcon.ImageTransparency = 0.4
         TabIcon.Parent = TabButton
-        
-        -- Tab Label
+
         local TabLabel = Instance.new("TextLabel")
-        TabLabel.Name = "Label"
-        TabLabel.Size = UDim2.new(1, -40, 1, 0)
-        TabLabel.Position = UDim2.new(0, 35, 0, 0)
-        TabLabel.BackgroundTransparency = 1
+        TabLabel.Size = UDim2.new(1, -35, 1, 0)
+        TabLabel.Position = UDim2.new(0, 30, 0, 0)
         TabLabel.Text = name
-        TabLabel.TextColor3 = NazuroUI.Theme.TextSecondary
-        TabLabel.TextSize = 13
+        TabLabel.TextColor3 = NazuroUI.Theme.SubText
+        TabLabel.TextSize = 14
         TabLabel.Font = Enum.Font.Gotham
+        TabLabel.BackgroundTransparency = 1
+        TabLabel.TextTransparency = 0.4
         TabLabel.TextXAlignment = Enum.TextXAlignment.Left
-        TabLabel.TextYAlignment = Enum.TextYAlignment.Center
         TabLabel.Parent = TabButton
-        
-        -- Tab Content Frame
-        local TabFrame = Instance.new("ScrollingFrame")
-        TabFrame.Name = name .. "_Content"
-        TabFrame.Size = UDim2.new(1, 0, 1, 0)
-        TabFrame.Position = UDim2.new(0, 0, 0, 0)
-        TabFrame.BackgroundTransparency = 1
-        TabFrame.BorderSizePixel = 0
-        TabFrame.ScrollBarThickness = 4
-        TabFrame.ScrollBarImageColor3 = NazuroUI.Theme.Primary
-        TabFrame.ScrollBarImageTransparency = 0.5
-        TabFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-        TabFrame.Visible = false
-        TabFrame.Parent = TabContent
-        
+
+        local TabContent = Instance.new("ScrollingFrame")
+        TabContent.Name = name
+        TabContent.Size = UDim2.new(1, 0, 1, 0)
+        TabContent.BackgroundTransparency = 1
+        TabContent.ScrollBarThickness = 4
+        TabContent.ScrollBarImageColor3 = NazuroUI.Theme.Accent
+        TabContent.Visible = false
+        TabContent.Parent = ContentFrame
+
         local ContentLayout = Instance.new("UIListLayout")
         ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
         ContentLayout.Padding = UDim.new(0, 10)
-        ContentLayout.Parent = TabFrame
-        
+        ContentLayout.Parent = TabContent
+
         local ContentPadding = Instance.new("UIPadding")
-        ContentPadding.PaddingTop = UDim.new(0, 15)
-        ContentPadding.PaddingBottom = UDim.new(0, 15)
-        ContentPadding.PaddingLeft = UDim.new(0, 15)
-        ContentPadding.PaddingRight = UDim.new(0, 15)
-        ContentPadding.Parent = TabFrame
-        
-        -- Tab hover effects
-        TabButton.MouseEnter:Connect(function()
-            if Window.CurrentTab ~= TabFrame then
-                TweenService:Create(TabButton, NazuroUI.Theme.FastTween, {
-                    BackgroundTransparency = 0.9
-                }):Play()
-                TweenService:Create(TabIcon, NazuroUI.Theme.FastTween, {
-                    TextColor3 = NazuroUI.Theme.Text
-                }):Play()
-                TweenService:Create(TabLabel, NazuroUI.Theme.FastTween, {
-                    TextColor3 = NazuroUI.Theme.Text
-                }):Play()
-            end
-        end)
-        
-        TabButton.MouseLeave:Connect(function()
-            if Window.CurrentTab ~= TabFrame then
-                TweenService:Create(TabButton, NazuroUI.Theme.FastTween, {
-                    BackgroundTransparency = 1
-                }):Play()
-                TweenService:Create(TabIcon, NazuroUI.Theme.FastTween, {
-                    TextColor3 = NazuroUI.Theme.TextSecondary
-                }):Play()
-                TweenService:Create(TabLabel, NazuroUI.Theme.FastTween, {
-                    TextColor3 = NazuroUI.Theme.TextSecondary
-                }):Play()
-            end
-        end)
-        
-        -- Tab selection
+        ContentPadding.PaddingLeft = UDim.new(0, 10)
+        ContentPadding.PaddingTop = UDim.new(0, 10)
+        ContentPadding.Parent = TabContent
+
         TabButton.MouseButton1Click:Connect(function()
-            -- Hide all tabs
-            for _, tab in pairs(Window.Tabs) do
-                tab.Frame.Visible = false
-                TweenService:Create(tab.Button, NazuroUI.Theme.FastTween, {
-                    BackgroundTransparency = 1
-                }):Play()
-                TweenService:Create(tab.Icon, NazuroUI.Theme.FastTween, {
-                    TextColor3 = NazuroUI.Theme.TextSecondary
-                }):Play()
-                TweenService:Create(tab.Label, NazuroUI.Theme.FastTween, {
-                    TextColor3 = NazuroUI.Theme.TextSecondary
-                }):Play()
+            for _, tab in ipairs(ContentFrame:GetChildren()) do
+                if tab:IsA("ScrollingFrame") then tab.Visible = false end
             end
-            
-            -- Show selected tab
-            TabFrame.Visible = true
-            Window.CurrentTab = TabFrame
-            
-            TweenService:Create(TabButton, NazuroUI.Theme.FastTween, {
-                BackgroundTransparency = 0.7
-            }):Play()
-            TweenService:Create(TabIcon, NazuroUI.Theme.FastTween, {
-                TextColor3 = NazuroUI.Theme.Primary
-            }):Play()
-            TweenService:Create(TabLabel, NazuroUI.Theme.FastTween, {
-                TextColor3 = NazuroUI.Theme.Text
-            }):Play()
+            TabContent.Visible = true
+            UpdateTabVisuals(TabButton)
+            TabContent.CanvasSize = UDim2.new(0, 0, 0, ContentLayout.AbsoluteContentSize.Y + 20)
         end)
-        
-        -- Update canvas size when content changes
-        ContentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            TabFrame.CanvasSize = UDim2.new(0, 0, 0, ContentLayout.AbsoluteContentSize.Y + 30)
-        end)
-        
-        local Tab = {
-            Frame = TabFrame,
-            Button = TabButton,
-            Icon = TabIcon,
-            Label = TabLabel,
-            Layout = ContentLayout
-        }
-        
-        Window.Tabs[name] = Tab
-        
-        -- Auto-select first tab
-        if #Window.Tabs == 1 then
-            TabButton.MouseButton1Click:Wait()
+
+        if #TabButtons:GetChildren() == 1 then
+            TabButton.MouseButton1Click:Fire()
         end
-        
+
+        local Tab = {}
+
         function Tab:CreateSection(title)
             local Section = Instance.new("Frame")
             Section.Name = title
-            Section.Size = UDim2.new(1, 0, 0, 0)
+            Section.Size = UDim2.new(1, -20, 0, 0)
             Section.BackgroundTransparency = 1
-            Section.Parent = TabFrame
-            
+            Section.Parent = TabContent
+
             local SectionTitle = Instance.new("TextLabel")
-            SectionTitle.Name = "Title"
-            SectionTitle.Size = UDim2.new(1, 0, 0, 25)
-            SectionTitle.Position = UDim2.new(0, 0, 0, 0)
-            SectionTitle.BackgroundTransparency = 1
+            SectionTitle.Size = UDim2.new(1, 0, 0, 30)
             SectionTitle.Text = title
             SectionTitle.TextColor3 = NazuroUI.Theme.Text
-            SectionTitle.TextSize = 14
-            SectionTitle.Font = Enum.Font.GothamSemibold
+            SectionTitle.TextSize = 16
+            SectionTitle.Font = Enum.Font.GothamBold
+            SectionTitle.BackgroundTransparency = 1
             SectionTitle.TextXAlignment = Enum.TextXAlignment.Left
-            SectionTitle.TextYAlignment = Enum.TextYAlignment.Center
             SectionTitle.Parent = Section
-            
+
             local SectionContent = Instance.new("Frame")
-            SectionContent.Name = "Content"
-            SectionContent.Size = UDim2.new(1, 0, 0, 0)
+            SectionContent.Size = UDim2.new(1, 0, 1, -30)
             SectionContent.Position = UDim2.new(0, 0, 0, 30)
             SectionContent.BackgroundTransparency = 1
             SectionContent.Parent = Section
-            
+
             local SectionLayout = Instance.new("UIListLayout")
             SectionLayout.SortOrder = Enum.SortOrder.LayoutOrder
-            SectionLayout.Padding = UDim.new(0, 5)
+            SectionLayout.Padding = UDim.new(0, 8)
             SectionLayout.Parent = SectionContent
-            
-            local function UpdateSize()
-                SectionContent.Size = UDim2.new(1, 0, 0, SectionLayout.AbsoluteContentSize.Y)
-                Section.Size = UDim2.new(1, 0, 0, SectionLayout.AbsoluteContentSize.Y + 40)
-                TabFrame.CanvasSize = UDim2.new(0, 0, 0, ContentLayout.AbsoluteContentSize.Y + 30)
+
+            local function UpdateSectionSize()
+                Section.Size = UDim2.new(1, -20, 0, SectionLayout.AbsoluteContentSize.Y + 30)
+                TabContent.CanvasSize = UDim2.new(0, 0, 0, ContentLayout.AbsoluteContentSize.Y + 20)
             end
-            
-            SectionLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(UpdateSize)
-            
-            local SectionAPI = {}
-            
-            function SectionAPI:CreateButton(config)
-                config = config or {}
-                local name = config.Name or "Button"
-                local callback = config.Callback or function() end
-                
+            SectionLayout.Changed:Connect(UpdateSectionSize)
+
+            local SectionFunctions = {}
+
+            function SectionFunctions:CreateButton(settings)
                 local Button = Instance.new("TextButton")
-                Button.Name = name
-                Button.Size = UDim2.new(1, 0, 0, 35)
-                Button.BackgroundColor3 = NazuroUI.Theme.Primary
-                Button.Text = name
-                Button.TextColor3 = Color3.fromRGB(255, 255, 255)
-                Button.TextSize = 13
+                Button.Size = UDim2.new(1, -10, 0, 40)
+                Button.BackgroundColor3 = NazuroUI.Theme.Secondary
+                Button.Text = settings.Name or "Button"
+                Button.TextColor3 = NazuroUI.Theme.Text
+                Button.TextSize = 14
                 Button.Font = Enum.Font.Gotham
                 Button.AutoButtonColor = false
+                RoundedCorners(Button, 6)
+                AddStroke(Button, 1, NazuroUI.Theme.Accent, 0.5)
                 Button.Parent = SectionContent
-                
-                CreateCorner(Button, 6)
-                
-                Button.MouseEnter:Connect(function()
-                    TweenService:Create(Button, NazuroUI.Theme.FastTween, {
-                        BackgroundColor3 = NazuroUI.Theme.PrimaryHover
-                    }):Play()
-                end)
-                
-                Button.MouseLeave:Connect(function()
-                    TweenService:Create(Button, NazuroUI.Theme.FastTween, {
-                        BackgroundColor3 = NazuroUI.Theme.Primary
-                    }):Play()
-                end)
-                
+
                 Button.MouseButton1Click:Connect(function()
-                    TweenService:Create(Button, TweenInfo.new(0.1), {
-                        Size = UDim2.new(1, -4, 0, 33)
-                    }):Play()
-                    
-                    wait(0.1)
-                    
-                    TweenService:Create(Button, TweenInfo.new(0.1), {
-                        Size = UDim2.new(1, 0, 0, 35)
-                    }):Play()
-                    
-                    callback()
+                    local success, err = pcall(settings.Callback or function() end)
+                    if not success then
+                        TweenService:Create(Button, NazuroUI.Theme.TweenInfo, {BackgroundColor3 = NazuroUI.Theme.Error}):Play()
+                        Button.Text = "Error!"
+                        wait(0.5)
+                        Button.Text = settings.Name or "Button"
+                        TweenService:Create(Button, NazuroUI.Theme.TweenInfo, {BackgroundColor3 = NazuroUI.Theme.Secondary}):Play()
+                    else
+                        TweenService:Create(Button, NazuroUI.Theme.TweenInfo, {Size = UDim2.new(1, -15, 0, 38)}):Play()
+                        wait(0.2)
+                        TweenService:Create(Button, NazuroUI.Theme.TweenInfo, {Size = UDim2.new(1, -10, 0, 40)}):Play()
+                    end
                 end)
-                
-                UpdateSize()
-                return Button
+                UpdateSectionSize()
             end
-            
-            function SectionAPI:CreateToggle(config)
-                config = config or {}
-                local name = config.Name or "Toggle"
-                local default = config.Default or false
-                local callback = config.Callback or function() end
-                
-                local ToggleFrame = Instance.new("Frame")
-                ToggleFrame.Name = name
-                ToggleFrame.Size = UDim2.new(1, 0, 0, 35)
-                ToggleFrame.BackgroundColor3 = NazuroUI.Theme.SurfaceElevated
-                ToggleFrame.Parent = SectionContent
-                
-                CreateCorner(ToggleFrame, 6)
-                CreateStroke(ToggleFrame, 1, NazuroUI.Theme.Border, 0.5)
-                
+
+            function SectionFunctions:CreateToggle(settings)
+                local Toggle = Instance.new("Frame")
+                Toggle.Size = UDim2.new(1, -10, 0, 40)
+                Toggle.BackgroundColor3 = NazuroUI.Theme.Secondary
+                RoundedCorners(Toggle, 6)
+                AddStroke(Toggle, 1, NazuroUI.Theme.Accent, 0.5)
+                Toggle.Parent = SectionContent
+
                 local ToggleLabel = Instance.new("TextLabel")
-                ToggleLabel.Name = "Label"
-                ToggleLabel.Size = UDim2.new(1, -50, 1, 0)
-                ToggleLabel.Position = UDim2.new(0, 15, 0, 0)
-                ToggleLabel.BackgroundTransparency = 1
-                ToggleLabel.Text = name
+                ToggleLabel.Size = UDim2.new(1, -60, 1, 0)
+                ToggleLabel.Position = UDim2.new(0, 5, 0, 0)
+                ToggleLabel.Text = settings.Name or "Toggle"
                 ToggleLabel.TextColor3 = NazuroUI.Theme.Text
-                ToggleLabel.TextSize = 13
+                ToggleLabel.TextSize = 14
                 ToggleLabel.Font = Enum.Font.Gotham
+                ToggleLabel.BackgroundTransparency = 1
                 ToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
-                ToggleLabel.TextYAlignment = Enum.TextYAlignment.Center
-                ToggleLabel.Parent = ToggleFrame
-                
-                local ToggleButton = Instance.new("TextButton")
-                ToggleButton.Name = "Toggle"
-                ToggleButton.Size = UDim2.new(0, 35, 0, 20)
-                ToggleButton.Position = UDim2.new(1, -45, 0.5, -10)
-                ToggleButton.BackgroundColor3 = default and NazuroUI.Theme.Primary or NazuroUI.Theme.Border
-                ToggleButton.Text = ""
-                ToggleButton.AutoButtonColor = false
-                ToggleButton.Parent = ToggleFrame
-                
-                CreateCorner(ToggleButton, 10)
-                
+                ToggleLabel.Parent = Toggle
+
+                local ToggleSwitch = Instance.new("Frame")
+                ToggleSwitch.Size = UDim2.new(0, 50, 0, 20)
+                ToggleSwitch.Position = UDim2.new(1, -55, 0.5, -10)
+                ToggleSwitch.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+                RoundedCorners(ToggleSwitch, 10)
+                ToggleSwitch.Parent = Toggle
+
                 local ToggleIndicator = Instance.new("Frame")
-                ToggleIndicator.Name = "Indicator"
-                ToggleIndicator.Size = UDim2.new(0, 16, 0, 16)
-                ToggleIndicator.Position = default and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
-                ToggleIndicator.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-                ToggleIndicator.Parent = ToggleButton
-                
-                CreateCorner(ToggleIndicator, 8)
-                
-                local toggled = default
-                
-                ToggleButton.MouseButton1Click:Connect(function()
-                    toggled = not toggled
-                    
-                    TweenService:Create(ToggleButton, NazuroUI.Theme.MediumTween, {
-                        BackgroundColor3 = toggled and NazuroUI.Theme.Primary or NazuroUI.Theme.Border
+                ToggleIndicator.Size = UDim2.new(0, 20, 0, 20)
+                ToggleIndicator.Position = UDim2.new(0, 5, 0, 0)
+                ToggleIndicator.BackgroundColor3 = NazuroUI.Theme.Text
+                RoundedCorners(ToggleIndicator, 10)
+                ToggleIndicator.Parent = ToggleSwitch
+
+                local ToggleButton = Instance.new("TextButton")
+                ToggleButton.Size = UDim2.new(1, 0, 1, 0)
+                ToggleButton.BackgroundTransparency = 1
+                ToggleButton.Text = ""
+                ToggleButton.Parent = Toggle
+
+                local flag = settings.Flag
+                local state = flag and Config.Toggles[flag] or settings.CurrentValue or false
+                if flag and not Config.Toggles[flag] then
+                    Config.Toggles[flag] = state
+                    SafeWriteFile(ConfigFile, HttpService:JSONEncode(Config))
+                end
+
+                local function SetToggle(value)
+                    state = value
+                    if flag then
+                        Config.Toggles[flag] = state
+                        SafeWriteFile(ConfigFile, HttpService:JSONEncode(Config))
+                    end
+                    TweenService:Create(ToggleIndicator, NazuroUI.Theme.TweenInfo, {
+                        Position = UDim2.new(0, state and 25 or 5, 0, 0),
+                        BackgroundColor3 = state and NazuroUI.Theme.Accent or NazuroUI.Theme.Text
                     }):Play()
-                    
-                    TweenService:Create(ToggleIndicator, NazuroUI.Theme.MediumTween, {
-                        Position = toggled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
-                    }):Play()
-                    
-                    callback(toggled)
-                end)
-                
-                UpdateSize()
-                return ToggleFrame
+                    pcall(settings.Callback or function() end, state)
+                end
+                SetToggle(state)
+
+                ToggleButton.MouseButton1Click:Connect(function() SetToggle(not state) end)
+                UpdateSectionSize()
             end
-            
-            UpdateSize()
-            return SectionAPI
+
+            return SectionFunctions
         end
-        
+
         return Tab
     end
-    
+
+    function Window:Notify(options)
+        CreateNotification(options)
+    end
+
+    function Window:Toggle(state)
+        ScreenGui.Enabled = state ~= nil and state or not ScreenGui.Enabled
+    end
+
     return Window
 end
 
