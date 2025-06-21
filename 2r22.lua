@@ -1,26 +1,19 @@
--- Nazuro UI Library
+-- Nazuro UI Library - Transparent Purple-Blue Theme
 -- github.com/Gxwebhost/te/main/2r22.lua
 
 local Nazuro = {}
 Nazuro.__index = Nazuro
 
--- Themes
+-- Custom Transparent Purple-Blue Theme
 local Themes = {
-    Dark = {
-        Background = Color3.fromRGB(30, 30, 30),
-        Foreground = Color3.fromRGB(50, 50, 50),
+    PurpleBlue = {
+        Background = Color3.fromRGB(30, 20, 50),
+        Foreground = Color3.fromRGB(40, 30, 70),
         Text = Color3.fromRGB(255, 255, 255),
-        Accent = Color3.fromRGB(0, 120, 215),
+        Accent = Color3.fromRGB(120, 80, 200),
         Shadow = Color3.fromRGB(0, 0, 0),
-        Border = Color3.fromRGB(60, 60, 60)
-    },
-    Light = {
-        Background = Color3.fromRGB(240, 240, 240),
-        Foreground = Color3.fromRGB(255, 255, 255),
-        Text = Color3.fromRGB(0, 0, 0),
-        Accent = Color3.fromRGB(0, 90, 180),
-        Shadow = Color3.fromRGB(200, 200, 200),
-        Border = Color3.fromRGB(220, 220, 220)
+        Border = Color3.fromRGB(90, 70, 150),
+        Transparency = 0.5
     }
 }
 
@@ -45,10 +38,10 @@ local function Tween(object, properties, duration, style)
     ):Play()
 end
 
--- Window creation
+-- Window creation with drag functionality
 function Nazuro:CreateWindow(config)
     local Window = {}
-    Window.Theme = Themes[config.Theme] or Themes.Dark
+    Window.Theme = Themes.PurpleBlue -- Force the purple-blue theme
     Window.Name = config.Name or "Nazuro UI"
     
     -- Main GUI
@@ -66,6 +59,7 @@ function Nazuro:CreateWindow(config)
         Position = UDim2.new(0.5, -250, 0.5, -200),
         AnchorPoint = Vector2.new(0.5, 0.5),
         BackgroundColor3 = Window.Theme.Background,
+        BackgroundTransparency = Window.Theme.Transparency,
         Parent = ScreenGui
     })
     
@@ -77,14 +71,16 @@ function Nazuro:CreateWindow(config)
     Create("UIStroke", {
         Color = Window.Theme.Border,
         Thickness = 1,
+        Transparency = 0.7,
         Parent = MainFrame
     })
     
-    -- Title bar
+    -- Title bar with drag functionality
     local TitleBar = Create("Frame", {
         Name = "TitleBar",
         Size = UDim2.new(1, 0, 0, 30),
         BackgroundColor3 = Window.Theme.Foreground,
+        BackgroundTransparency = Window.Theme.Transparency,
         Parent = MainFrame
     })
     
@@ -106,18 +102,63 @@ function Nazuro:CreateWindow(config)
         Parent = TitleBar
     })
     
+    -- Make window draggable
+    local UserInputService = game:GetService("UserInputService")
+    local dragging
+    local dragInput
+    local dragStart
+    local startPos
+    
+    local function Update(input)
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(
+            startPos.X.Scale, 
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale, 
+            startPos.Y.Offset + delta.Y
+        )
+    end
+    
+    TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = MainFrame.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    TitleBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            Update(input)
+        end
+    end)
+    
     -- Tab container
     local TabContainer = Create("Frame", {
         Name = "TabContainer",
         Size = UDim2.new(0, 100, 1, -30),
         Position = UDim2.new(0, 0, 0, 30),
         BackgroundColor3 = Window.Theme.Foreground,
+        BackgroundTransparency = Window.Theme.Transparency,
         Parent = MainFrame
     })
     
     Create("UIStroke", {
         Color = Window.Theme.Border,
         Thickness = 1,
+        Transparency = 0.7,
         Parent = TabContainer
     })
     
@@ -152,6 +193,7 @@ function Nazuro:CreateWindow(config)
             Name = "TabButton_"..Tab.Name,
             Size = UDim2.new(1, -10, 0, 30),
             BackgroundColor3 = Window.Theme.Foreground,
+            BackgroundTransparency = Window.Theme.Transparency,
             Text = Tab.Name,
             TextColor3 = Window.Theme.Text,
             Font = Enum.Font.Gotham,
@@ -162,6 +204,13 @@ function Nazuro:CreateWindow(config)
         
         Create("UICorner", {
             CornerRadius = UDim.new(0, 5),
+            Parent = TabButton
+        })
+        
+        Create("UIStroke", {
+            Color = Window.Theme.Border,
+            Thickness = 1,
+            Transparency = 0.7,
             Parent = TabButton
         })
         
@@ -193,6 +242,7 @@ function Nazuro:CreateWindow(config)
         if #TabContainer:GetChildren() == 1 then
             TabFrame.Visible = true
             TabButton.BackgroundColor3 = Window.Theme.Accent
+            TabButton.BackgroundTransparency = Window.Theme.Transparency - 0.2
         end
         
         -- Tab button click event
@@ -205,12 +255,12 @@ function Nazuro:CreateWindow(config)
             
             for _, child in ipairs(TabContainer:GetChildren()) do
                 if child:IsA("TextButton") then
-                    Tween(child, {BackgroundColor3 = Window.Theme.Foreground})
+                    Tween(child, {BackgroundColor3 = Window.Theme.Foreground, BackgroundTransparency = Window.Theme.Transparency})
                 end
             end
             
             TabFrame.Visible = true
-            Tween(TabButton, {BackgroundColor3 = Window.Theme.Accent})
+            Tween(TabButton, {BackgroundColor3 = Window.Theme.Accent, BackgroundTransparency = Window.Theme.Transparency - 0.2})
         end)
         
         -- Tab methods
@@ -222,6 +272,7 @@ function Nazuro:CreateWindow(config)
                 Name = "Section_"..Section.Name,
                 Size = UDim2.new(1, -20, 0, 0),
                 BackgroundColor3 = Window.Theme.Foreground,
+                BackgroundTransparency = Window.Theme.Transparency,
                 LayoutOrder = #TabFrame:GetChildren(),
                 Parent = TabFrame
             })
@@ -234,6 +285,7 @@ function Nazuro:CreateWindow(config)
             Create("UIStroke", {
                 Color = Window.Theme.Border,
                 Thickness = 1,
+                Transparency = 0.7,
                 Parent = SectionFrame
             })
             
@@ -303,6 +355,7 @@ function Nazuro:CreateWindow(config)
                     Size = UDim2.new(0, 50, 0, 25),
                     Position = UDim2.new(1, -50, 0, 0),
                     BackgroundColor3 = Window.Theme.Foreground,
+                    BackgroundTransparency = Window.Theme.Transparency,
                     Text = "",
                     Parent = ToggleFrame
                 })
@@ -315,6 +368,7 @@ function Nazuro:CreateWindow(config)
                 Create("UIStroke", {
                     Color = Window.Theme.Border,
                     Thickness = 1,
+                    Transparency = 0.7,
                     Parent = ToggleButton
                 })
                 
@@ -323,7 +377,7 @@ function Nazuro:CreateWindow(config)
                     Size = UDim2.new(0, 20, 0, 20),
                     Position = UDim2.new(0, 3, 0.5, -10),
                     AnchorPoint = Vector2.new(0, 0.5),
-                    BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+                    BackgroundColor3 = Color3.fromRGB(220, 220, 255),
                     Parent = ToggleButton
                 })
                 
@@ -335,10 +389,10 @@ function Nazuro:CreateWindow(config)
                 local function UpdateToggle()
                     if Toggle.Value then
                         Tween(ToggleCircle, {Position = UDim2.new(1, -23, 0.5, -10)})
-                        Tween(ToggleButton, {BackgroundColor3 = Window.Theme.Accent})
+                        Tween(ToggleButton, {BackgroundColor3 = Window.Theme.Accent, BackgroundTransparency = Window.Theme.Transparency - 0.2})
                     else
                         Tween(ToggleCircle, {Position = UDim2.new(0, 3, 0.5, -10)})
-                        Tween(ToggleButton, {BackgroundColor3 = Window.Theme.Foreground})
+                        Tween(ToggleButton, {BackgroundColor3 = Window.Theme.Foreground, BackgroundTransparency = Window.Theme.Transparency})
                     end
                     Toggle.Callback(Toggle.Value)
                 end
@@ -411,6 +465,7 @@ function Nazuro:CreateWindow(config)
                     Size = UDim2.new(1, 0, 0, 5),
                     Position = UDim2.new(0, 0, 0, 30),
                     BackgroundColor3 = Window.Theme.Foreground,
+                    BackgroundTransparency = Window.Theme.Transparency,
                     Parent = SliderFrame
                 })
                 
@@ -423,6 +478,7 @@ function Nazuro:CreateWindow(config)
                     Name = "SliderFill",
                     Size = UDim2.new(0, 0, 1, 0),
                     BackgroundColor3 = Window.Theme.Accent,
+                    BackgroundTransparency = Window.Theme.Transparency - 0.2,
                     Parent = SliderTrack
                 })
                 
@@ -436,7 +492,7 @@ function Nazuro:CreateWindow(config)
                     Size = UDim2.new(0, 15, 0, 15),
                     Position = UDim2.new(0, 0, 0.5, -7.5),
                     AnchorPoint = Vector2.new(0, 0.5),
-                    BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+                    BackgroundColor3 = Color3.fromRGB(220, 220, 255),
                     AutoButtonColor = false,
                     Parent = SliderTrack
                 })
@@ -449,6 +505,7 @@ function Nazuro:CreateWindow(config)
                 Create("UIStroke", {
                     Color = Window.Theme.Border,
                     Thickness = 1,
+                    Transparency = 0.7,
                     Parent = SliderThumb
                 })
                 
@@ -523,6 +580,7 @@ function Nazuro:CreateWindow(config)
                     Name = "DropdownButton",
                     Size = UDim2.new(1, 0, 0, 25),
                     BackgroundColor3 = Window.Theme.Foreground,
+                    BackgroundTransparency = Window.Theme.Transparency,
                     Text = Dropdown.Name .. ": " .. Dropdown.Value,
                     TextColor3 = Window.Theme.Text,
                     TextXAlignment = Enum.TextXAlignment.Left,
@@ -539,6 +597,7 @@ function Nazuro:CreateWindow(config)
                 Create("UIStroke", {
                     Color = Window.Theme.Border,
                     Thickness = 1,
+                    Transparency = 0.7,
                     Parent = DropdownButton
                 })
                 
@@ -558,6 +617,7 @@ function Nazuro:CreateWindow(config)
                     Size = UDim2.new(1, 0, 0, 0),
                     Position = UDim2.new(0, 0, 0, 30),
                     BackgroundColor3 = Window.Theme.Foreground,
+                    BackgroundTransparency = Window.Theme.Transparency,
                     Visible = false,
                     Parent = DropdownFrame
                 })
@@ -570,6 +630,7 @@ function Nazuro:CreateWindow(config)
                 Create("UIStroke", {
                     Color = Window.Theme.Border,
                     Thickness = 1,
+                    Transparency = 0.7,
                     Parent = DropdownList
                 })
                 
@@ -610,6 +671,7 @@ function Nazuro:CreateWindow(config)
                         Size = UDim2.new(1, -10, 0, 25),
                         Position = UDim2.new(0, 5, 0, 0),
                         BackgroundColor3 = Window.Theme.Foreground,
+                        BackgroundTransparency = Window.Theme.Transparency,
                         Text = option,
                         TextColor3 = Window.Theme.Text,
                         Font = Enum.Font.Gotham,
@@ -662,6 +724,7 @@ function Nazuro:CreateWindow(config)
                             Size = UDim2.new(1, -10, 0, 25),
                             Position = UDim2.new(0, 5, 0, 0),
                             BackgroundColor3 = Window.Theme.Foreground,
+                            BackgroundTransparency = Window.Theme.Transparency,
                             Text = option,
                             TextColor3 = Window.Theme.Text,
                             Font = Enum.Font.Gotham,
@@ -696,6 +759,7 @@ function Nazuro:CreateWindow(config)
                     Name = "Button_"..Button.Name,
                     Size = UDim2.new(1, 0, 0, 25),
                     BackgroundColor3 = Window.Theme.Foreground,
+                    BackgroundTransparency = Window.Theme.Transparency,
                     Text = Button.Name,
                     TextColor3 = Window.Theme.Text,
                     Font = Enum.Font.Gotham,
@@ -712,14 +776,15 @@ function Nazuro:CreateWindow(config)
                 Create("UIStroke", {
                     Color = Window.Theme.Border,
                     Thickness = 1,
+                    Transparency = 0.7,
                     Parent = ButtonFrame
                 })
                 
                 ButtonFrame.MouseButton1Click:Connect(function()
-                    Tween(ButtonFrame, {BackgroundColor3 = Window.Theme.Accent})
+                    Tween(ButtonFrame, {BackgroundColor3 = Window.Theme.Accent, BackgroundTransparency = Window.Theme.Transparency - 0.3})
                     Button.Callback()
                     task.wait(0.1)
-                    Tween(ButtonFrame, {BackgroundColor3 = Window.Theme.Foreground})
+                    Tween(ButtonFrame, {BackgroundColor3 = Window.Theme.Foreground, BackgroundTransparency = Window.Theme.Transparency})
                 end)
                 
                 return Button
