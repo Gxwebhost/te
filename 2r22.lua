@@ -101,8 +101,8 @@ local MainUI = Create("ScreenGui", {
 local MainFrame = Create("Frame", {
     Name = "MainFrame",
     Size = UDim2.new(0, 500, 0, 600),
-    Position = UDim2.new(0.5, -250, 0.5, -300),
-    AnchorPoint = Vector2.new(0.5, 0.5),
+    Position = UDim2.new(0.5, -250, 0.5, -300), -- Centered on screen
+    AnchorPoint = Vector2.new(0.5, 0.5), -- Ensures proper centering
     BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Main,
     BackgroundTransparency = Nazuro.Settings.Transparency,
     Parent = MainUI,
@@ -121,7 +121,7 @@ Create("UIStroke", {
     Parent = MainFrame
 })
 
--- Title Bar
+-- Title Bar (this will be our draggable area)
 local TitleBar = Create("Frame", {
     Name = "TitleBar",
     Size = UDim2.new(1, 0, 0, 40),
@@ -158,6 +158,107 @@ local CloseButton = Create("TextButton", {
 CloseButton.MouseButton1Click:Connect(function()
     MainUI:Destroy()
 end)
+
+-- Drag functionality
+local dragging
+local dragInput
+local dragStart
+local startPos
+
+local function UpdateInput(input)
+    local delta = input.Position - dragStart
+    MainFrame.Position = UDim2.new(
+        startPos.X.Scale, 
+        startPos.X.Offset + delta.X,
+        startPos.Y.Scale, 
+        startPos.Y.Offset + delta.Y
+    )
+end
+
+TitleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+TitleBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        UpdateInput(input)
+    end
+end)
+
+-- Mobile support
+local IsOnMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+
+if IsOnMobile then
+    local MobileButton = Create("ImageButton", {
+        Name = "MobileToggle",
+        Size = UDim2.new(0, 50, 0, 50),
+        Position = UDim2.new(1, -60, 1, -60),
+        AnchorPoint = Vector2.new(1, 1),
+        BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Accent,
+        BackgroundTransparency = 0.7,
+        Image = "rbxassetid://10734922324",
+        Parent = MainUI
+    })
+    
+    Create("UICorner", {
+        CornerRadius = UDim.new(1, 0),
+        Parent = MobileButton
+    })
+    
+    -- Make mobile button draggable
+    local mobileDragging
+    local mobileDragStart
+    local mobileStartPos
+    
+    MobileButton.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            mobileDragging = true
+            mobileDragStart = input.Position
+            mobileStartPos = MobileButton.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    mobileDragging = false
+                end
+            end)
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if mobileDragging and input.UserInputType == Enum.UserInputType.Touch then
+            local delta = input.Position - mobileDragStart
+            MobileButton.Position = UDim2.new(
+                mobileStartPos.X.Scale, 
+                mobileStartPos.X.Offset + delta.X,
+                mobileStartPos.Y.Scale, 
+                mobileStartPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+    
+    MobileButton.MouseButton1Click:Connect(function()
+        MainFrame.Visible = not MainFrame.Visible
+    end)
+end
+
+
+
 
 -- Sidebar
 local Sidebar = Create("Frame", {
