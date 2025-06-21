@@ -1,904 +1,338 @@
---!native
---!optimize 2
+-- UI Library by [Your Name]
+-- Version 1.0
 
-local Nazuro = {
-    Themes = {
-        Dark = {
-            Main = Color3.fromRGB(20, 20, 30),
-            Secondary = Color3.fromRGB(30, 30, 45),
-            Accent = Color3.fromRGB(100, 70, 200),
-            Text = Color3.fromRGB(240, 240, 250),
-            SubText = Color3.fromRGB(180, 180, 190),
-            Error = Color3.fromRGB(220, 80, 80),
-            Success = Color3.fromRGB(80, 220, 120),
-            Warning = Color3.fromRGB(220, 180, 80),
-            Info = Color3.fromRGB(80, 180, 220)
-        },
-        Light = {
-            Main = Color3.fromRGB(240, 240, 245),
-            Secondary = Color3.fromRGB(220, 220, 230),
-            Accent = Color3.fromRGB(120, 90, 220),
-            Text = Color3.fromRGB(30, 30, 40),
-            SubText = Color3.fromRGB(80, 80, 90),
-            Error = Color3.fromRGB(200, 60, 60),
-            Success = Color3.fromRGB(60, 200, 100),
-            Warning = Color3.fromRGB(200, 160, 60),
-            Info = Color3.fromRGB(60, 160, 200)
-        }
-    },
-    Settings = {
-        CurrentTheme = "Dark",
-        Transparency = 0.1,
-        TweenSpeed = 0.25,
-        EasingStyle = Enum.EasingStyle.Quint
-    }
+local UILibrary = {}
+
+-- Theme settings (customizable)
+UILibrary.Theme = {
+    PrimaryColor = Color3.fromRGB(0, 120, 215),
+    SecondaryColor = Color3.fromRGB(40, 40, 40),
+    TextColor = Color3.fromRGB(255, 255, 255),
+    Font = Enum.Font.Gotham,
+    CornerRadius = UDim.new(0, 8),
+    DropShadow = true
 }
 
--- Core services
-local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
+-- Create a new screen GUI if one doesn't exist
+function UILibrary:CreateScreenGui(name)
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = name or "UILibraryGui"
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+    
+    return screenGui
+end
 
--- Utility functions
-local function Create(class, props)
-    local obj = Instance.new(class)
-    for prop, val in pairs(props) do
-        if prop ~= "Parent" then
-            obj[prop] = val
-        end
+-- Create a frame container
+function UILibrary:CreateFrame(props)
+    local frame = Instance.new("Frame")
+    frame.BackgroundColor3 = props.BackgroundColor3 or self.Theme.SecondaryColor
+    frame.Size = props.Size or UDim2.new(0, 200, 0, 150)
+    frame.Position = props.Position or UDim2.new(0.5, -100, 0.5, -75)
+    frame.AnchorPoint = props.AnchorPoint or Vector2.new(0.5, 0.5)
+    
+    if self.Theme.CornerRadius then
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = self.Theme.CornerRadius
+        corner.Parent = frame
     end
-    obj.Parent = props.Parent
-    return obj
+    
+    if self.Theme.DropShadow then
+        local shadow = Instance.new("ImageLabel")
+        shadow.Name = "DropShadow"
+        shadow.Image = "rbxassetid://1316045217"
+        shadow.ImageColor3 = Color3.new(0, 0, 0)
+        shadow.ImageTransparency = 0.5
+        shadow.ScaleType = Enum.ScaleType.Slice
+        shadow.SliceCenter = Rect.new(10, 10, 118, 118)
+        shadow.Size = UDim2.new(1, 20, 1, 20)
+        shadow.Position = UDim2.new(0, -10, 0, -10)
+        shadow.BackgroundTransparency = 1
+        shadow.Parent = frame
+        shadow.ZIndex = -1
+    end
+    
+    if props.Parent then
+        frame.Parent = props.Parent
+    end
+    
+    return frame
 end
 
-local function Tween(obj, props, duration)
-    local tweenInfo = TweenInfo.new(
-        duration or Nazuro.Settings.TweenSpeed,
-        Nazuro.Settings.EasingStyle
-    )
-    local tween = TweenService:Create(obj, tweenInfo, props)
-    tween:Play()
-    return tween
-end
-
-local function RippleEffect(button)
-    local ripple = Create("Frame", {
-        Name = "Ripple",
-        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-        BackgroundTransparency = 0.8,
-        Size = UDim2.new(0, 0, 0, 0),
-        Position = UDim2.new(0.5, 0, 0.5, 0),
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        Parent = button,
-        ZIndex = 10
-    })
+-- Create a button
+function UILibrary:CreateButton(props)
+    local button = Instance.new("TextButton")
+    button.Name = props.Name or "Button"
+    button.Size = props.Size or UDim2.new(0, 120, 0, 40)
+    button.Position = props.Position or UDim2.new(0, 0, 0, 0)
+    button.BackgroundColor3 = props.BackgroundColor3 or self.Theme.PrimaryColor
+    button.TextColor3 = props.TextColor3 or self.Theme.TextColor
+    button.Text = props.Text or "Button"
+    button.Font = props.Font or self.Theme.Font
+    button.TextSize = props.TextSize or 14
     
-    Create("UICorner", {
-        CornerRadius = UDim.new(1, 0),
-        Parent = ripple
-    })
+    -- Add corner radius
+    if self.Theme.CornerRadius then
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = self.Theme.CornerRadius
+        corner.Parent = button
+    end
     
-    Tween(ripple, {
-        Size = UDim2.new(2, 0, 2, 0),
-        BackgroundTransparency = 1
-    }):Play()
-    
-    task.spawn(function()
-        task.wait(0.5)
-        ripple:Destroy()
+    -- Button hover effects
+    button.MouseEnter:Connect(function()
+        game:GetService("TweenService"):Create(
+            button,
+            TweenInfo.new(0.2),
+            {BackgroundTransparency = 0.2}
+        ):Play()
     end)
+    
+    button.MouseLeave:Connect(function()
+        game:GetService("TweenService"):Create(
+            button,
+            TweenInfo.new(0.2),
+            {BackgroundTransparency = 0}
+        ):Play()
+    end)
+    
+    button.MouseButton1Down:Connect(function()
+        game:GetService("TweenService"):Create(
+            button,
+            TweenInfo.new(0.1),
+            {BackgroundTransparency = 0.4}
+        ):Play()
+    end)
+    
+    button.MouseButton1Up:Connect(function()
+        game:GetService("TweenService"):Create(
+            button,
+            TweenInfo.new(0.1),
+            {BackgroundTransparency = 0}
+        ):Play()
+    end)
+    
+    if props.OnClick then
+        button.MouseButton1Click:Connect(props.OnClick)
+    end
+    
+    if props.Parent then
+        button.Parent = props.Parent
+    end
+    
+    return button
 end
 
--- Main UI Container
-local MainUI = Create("ScreenGui", {
-    Name = "NazuroUI",
-    ResetOnSpawn = false,
-    ZIndexBehavior = Enum.ZIndexBehavior.Global,
-    IgnoreGuiInset = true, -- Ensures proper positioning with Roblox's topbar
-    Parent = CoreGui
-})
-
--- Adjusted MainFrame size to be more compact and centered
-local MainFrame = Create("Frame", {
-    Name = "MainFrame",
-    Size = UDim2.new(0, 400, 0, 450), -- Reduced size for better fit
-    Position = UDim2.new(0.5, -200, 0.5, -225), -- Centered based on new size
-    AnchorPoint = Vector2.new(0.5, 0.5),
-    BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Main,
-    BackgroundTransparency = Nazuro.Settings.Transparency,
-    Parent = MainUI,
-    ClipsDescendants = true
-})
-
-Create("UICorner", {
-    CornerRadius = UDim.new(0, 12),
-    Parent = MainFrame
-})
-
-Create("UIStroke", {
-    Color = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Accent,
-    Thickness = 1,
-    Transparency = 0.7,
-    Parent = MainFrame
-})
-
--- Title Bar
-local TitleBar = Create("Frame", {
-    Name = "TitleBar",
-    Size = UDim2.new(1, 0, 0, 35), -- Slightly reduced height
-    BackgroundTransparency = 1,
-    Parent = MainFrame
-})
-
-local Title = Create("TextLabel", {
-    Name = "Title",
-    Size = UDim2.new(0, 180, 1, 0), -- Adjusted width
-    Position = UDim2.new(0, 10, 0, 0),
-    BackgroundTransparency = 1,
-    Text = "Nazuro UI",
-    TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text,
-    TextXAlignment = Enum.TextXAlignment.Left,
-    Font = Enum.Font.GothamBold,
-    TextSize = 16, -- Slightly smaller text
-    Parent = TitleBar
-})
-
-local CloseButton = Create("TextButton", {
-    Name = "CloseButton",
-    Size = UDim2.new(0, 28, 0, 28), -- Slightly smaller button
-    Position = UDim2.new(1, -35, 0.5, -14),
-    AnchorPoint = Vector2.new(1, 0.5),
-    BackgroundTransparency = 1,
-    TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text,
-    Text = "×",
-    Font = Enum.Font.GothamBold,
-    TextSize = 22,
-    Parent = TitleBar
-})
-
-CloseButton.MouseButton1Click:Connect(function()
-    MainUI:Destroy()
-end)
-
--- Sidebar (reduced width for compactness)
-local Sidebar = Create("Frame", {
-    Name = "Sidebar",
-    Size = UDim2.new(0, 140, 1, -35), -- Reduced width and adjusted for new TitleBar height
-    Position = UDim2.new(0, 0, 0, 35),
-    BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Secondary,
-    BackgroundTransparency = Nazuro.Settings.Transparency + 0.1,
-    Parent = MainFrame
-})
-
-Create("UIStroke", {
-    Color = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Accent,
-    Thickness = 1,
-    Transparency = 0.7,
-    Parent = Sidebar
-})
-
-local TabList = Create("ScrollingFrame", {
-    Name = "TabList",
-    Size = UDim2.new(1, 0, 1, 0),
-    BackgroundTransparency = 1,
-    ScrollBarThickness = 3,
-    ScrollBarImageColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Accent,
-    Parent = Sidebar
-})
-
-Create("UIListLayout", {
-    SortOrder = Enum.SortOrder.LayoutOrder,
-    Padding = UDim.new(0, 5),
-    Parent = TabList
-})
-
-Create("UIPadding", {
-    PaddingTop = UDim.new(0, 8),
-    PaddingLeft = UDim.new(0, 8),
-    PaddingRight = UDim.new(0, 8),
-    Parent = TabList
-})
-
--- Content Area (adjusted for new sidebar width)
-local ContentArea = Create("Frame", {
-    Name = "ContentArea",
-    Size = UDim2.new(1, -140, 1, -35),
-    Position = UDim2.new(0, 140, 0, 35),
-    BackgroundTransparency = 1,
-    Parent = MainFrame
-})
-
-local TabContent = Create("Frame", {
-    Name = "TabContent",
-    Size = UDim2.new(1, 0, 1, 0),
-    BackgroundTransparency = 1,
-    Parent = ContentArea
-})
-
-Create("UIPadding", {
-    PaddingTop = UDim.new(0, 10),
-    PaddingLeft = UDim.new(0, 10),
-    PaddingRight = UDim.new(0, 10),
-    PaddingBottom = UDim.new(0, 10),
-    Parent = TabContent
-})
-
--- Improved Drag Functionality
-local dragging = false
-local dragInput
-local dragStart
-local startPos
-
-local function UpdateInput(input)
-    local delta = input.Position - dragStart
-    local newPos = UDim2.new(
-        startPos.X.Scale,
-        startPos.X.Offset + delta.X,
-        startPos.Y.Scale,
-        startPos.Y.Offset + delta.Y
-    )
+-- Create a label
+function UILibrary:CreateLabel(props)
+    local label = Instance.new("TextLabel")
+    label.Name = props.Name or "Label"
+    label.Size = props.Size or UDim2.new(1, 0, 0, 20)
+    label.Position = props.Position or UDim2.new(0, 0, 0, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = props.TextColor3 or self.Theme.TextColor
+    label.Text = props.Text or "Label"
+    label.Font = props.Font or self.Theme.Font
+    label.TextSize = props.TextSize or 14
+    label.TextXAlignment = props.TextXAlignment or Enum.TextXAlignment.Left
     
-    -- Clamp position to stay within screen bounds
-    local screenSize = MainUI.Parent.AbsoluteSize
-    local frameSize = MainFrame.AbsoluteSize
-    local minX = -frameSize.X / 2
-    local maxX = screenSize.X - frameSize.X / 2
-    local minY = -frameSize.Y / 2
-    local maxY = screenSize.Y - frameSize.Y / 2
+    if props.Parent then
+        label.Parent = props.Parent
+    end
     
-    newPos = UDim2.new(
-        0.5,
-        math.clamp(newPos.X.Offset, minX, maxX),
-        0.5,
-        math.clamp(newPos.Y.Offset, minY, maxY)
-    )
-    
-    Tween(MainFrame, {Position = newPos}, 0.1) -- Smooth drag with tween
+    return label
 end
 
-TitleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = MainFrame.Position
+-- Create a toggle switch
+function UILibrary:CreateToggle(props)
+    local toggleFrame = Instance.new("Frame")
+    toggleFrame.Name = props.Name or "Toggle"
+    toggleFrame.Size = props.Size or UDim2.new(0, 50, 0, 25)
+    toggleFrame.Position = props.Position or UDim2.new(0, 0, 0, 0)
+    toggleFrame.BackgroundTransparency = 1
+    
+    local toggleButton = Instance.new("TextButton")
+    toggleButton.Name = "ToggleButton"
+    toggleButton.Size = UDim2.new(1, 0, 1, 0)
+    toggleButton.Position = UDim2.new(0, 0, 0, 0)
+    toggleButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    toggleButton.AutoButtonColor = false
+    toggleButton.Text = ""
+    
+    local toggleCircle = Instance.new("Frame")
+    toggleCircle.Name = "ToggleCircle"
+    toggleCircle.Size = UDim2.new(0.45, 0, 0.8, 0)
+    toggleCircle.Position = UDim2.new(0.05, 0, 0.1, 0)
+    toggleCircle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    toggleCircle.AnchorPoint = Vector2.new(0, 0.5)
+    
+    -- Add corner radius
+    if self.Theme.CornerRadius then
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(1, 0)
+        corner.Parent = toggleButton
+        
+        local circleCorner = Instance.new("UICorner")
+        circleCorner.CornerRadius = UDim.new(1, 0)
+        circleCorner.Parent = toggleCircle
     end
-end)
-
-TitleBar.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = false
+    
+    local state = props.Default or false
+    
+    local function updateToggle()
+        if state then
+            game:GetService("TweenService"):Create(
+                toggleCircle,
+                TweenInfo.new(0.2),
+                {Position = UDim2.new(0.5, 0, 0.1, 0)}
+            ):Play()
+            toggleButton.BackgroundColor3 = self.Theme.PrimaryColor
+        else
+            game:GetService("TweenService"):Create(
+                toggleCircle,
+                TweenInfo.new(0.2),
+                {Position = UDim2.new(0.05, 0, 0.1, 0)}
+            ):Play()
+            toggleButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+        end
     end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        dragInput = input
-        UpdateInput(input)
+    
+    toggleButton.MouseButton1Click:Connect(function()
+        state = not state
+        updateToggle()
+        if props.OnToggle then
+            props.OnToggle(state)
+        end
+    end)
+    
+    toggleCircle.Parent = toggleButton
+    toggleButton.Parent = toggleFrame
+    
+    if props.Parent then
+        toggleFrame.Parent = props.Parent
     end
-end)
-
--- Library functions
-function Nazuro:CreateWindow(options)
-    local window = {
-        Tabs = {},
-        CurrentTab = nil
+    
+    -- Initialize state
+    updateToggle()
+    
+    return {
+        Frame = toggleFrame,
+        SetState = function(newState)
+            state = newState
+            updateToggle()
+        end,
+        GetState = function()
+            return state
+        end
     }
-    
-    Title.Text = options.Name or "Nazuro UI"
-    
-    if options.Theme then
-        Nazuro.Settings.CurrentTheme = options.Theme
-    end
-    
-    function window:CreateTab(options)
-        local tab = {
-            Name = options.Name,
-            Icon = options.Icon or "rbxassetid://10734922324",
-            Sections = {}
-        }
-        
-        local tabButton = Create("TextButton", {
-            Name = options.Name,
-            Size = UDim2.new(1, -10, 0, 35), -- Reduced height
-            BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Secondary,
-            BackgroundTransparency = Nazuro.Settings.Transparency,
-            Text = "",
-            Parent = TabList
-        })
-        
-        Create("UICorner", {
-            CornerRadius = UDim.new(0, 8),
-            Parent = tabButton
-        })
-        
-        local tabIcon = Create("ImageLabel", {
-            Name = "Icon",
-            Size = UDim2.new(0, 18, 0, 18), -- Slightly smaller icon
-            Position = UDim2.new(0, 8, 0.5, -9),
-            BackgroundTransparency = 1,
-            Image = tab.Icon,
-            ImageColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text,
-            Parent = tabButton
-        })
-        
-        local tabTitle = Create("TextLabel", {
-            Name = "Title",
-            Size = UDim2.new(1, -35, 1, 0),
-            Position = UDim2.new(0, 35, 0, 0),
-            BackgroundTransparency = 1,
-            Text = tab.Name,
-            TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            Font = Enum.Font.Gotham,
-            TextSize = 13, -- Slightly smaller text
-            Parent = tabButton
-        })
-        
-        local tabContent = Create("ScrollingFrame", {
-            Name = tab.Name,
-            Size = UDim2.new(1, 0, 1, 0),
-            BackgroundTransparency = 1,
-            Visible = false,
-            ScrollBarThickness = 3,
-            ScrollBarImageColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Accent,
-            Parent = TabContent
-        })
-        
-        Create("UIListLayout", {
-            SortOrder = Enum.SortOrder.LayoutOrder,
-            Padding = UDim.new(0, 10), -- Reduced padding
-            Parent = tabContent
-        })
-        
-        tabButton.MouseButton1Click:Connect(function()
-            RippleEffect(tabButton)
-            if window.CurrentTab then
-                window.CurrentTab.Content.Visible = false
-            end
-            window.CurrentTab = tab
-            tabContent.Visible = true
-        end)
-        
-        tab.Content = tabContent
-        table.insert(window.Tabs, tab)
-        
-        if #window.Tabs == 1 then
-            window.CurrentTab = tab
-            tabContent.Visible = true
-        end
-        
-        function tab:CreateSection(options)
-            local section = {
-                Name = options.Name,
-                Content = nil
-            }
-            
-            local sectionFrame = Create("Frame", {
-                Name = options.Name,
-                Size = UDim2.new(1, 0, 0, 0),
-                BackgroundTransparency = 1,
-                Parent = tab.Content
-            })
-            
-            local sectionTitle = Create("TextLabel", {
-                Name = "Title",
-                Size = UDim2.new(1, 0, 0, 25), -- Reduced height
-                BackgroundTransparency = 1,
-                Text = section.Name,
-                TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                Font = Enum.Font.GothamBold,
-                TextSize = 15, -- Slightly smaller text
-                Parent = sectionFrame
-            })
-            
-            local sectionContent = Create("Frame", {
-                Name = "Content",
-                Size = UDim2.new(1, 0, 0, 0),
-                BackgroundTransparency = 1,
-                Parent = sectionFrame
-            })
-            
-            Create("UIListLayout", {
-                SortOrder = Enum.SortOrder.LayoutOrder,
-                Padding = UDim.new(0, 8), -- Reduced padding
-                Parent = sectionContent
-            })
-            
-            section.Content = sectionContent
-            table.insert(tab.Sections, section)
-            
-            function section:UpdateSize()
-                local contentSize = sectionContent.UIListLayout.AbsoluteContentSize
-                sectionContent.Size = UDim2.new(1, 0, 0, contentSize.Y)
-                sectionFrame.Size = UDim2.new(1, 0, 0, 25 + contentSize.Y)
-            end
-            
-            function section:CreateButton(options)
-                local button = Create("TextButton", {
-                    Name = options.Name,
-                    Size = UDim2.new(1, 0, 0, 35), -- Reduced height
-                    BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Accent,
-                    BackgroundTransparency = 0.5,
-                    Text = options.Name,
-                    TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text,
-                    Font = Enum.Font.Gotham,
-                    TextSize = 13, -- Slightly smaller text
-                    Parent = section.Content
-                })
-                
-                Create("UICorner", {
-                    CornerRadius = UDim.new(0, 8),
-                    Parent = button
-                })
-                
-                Create("UIStroke", {
-                    Color = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Accent,
-                    Thickness = 1,
-                    Transparency = 0.7,
-                    Parent = button
-                })
-                
-                button.MouseButton1Click:Connect(function()
-                    RippleEffect(button)
-                    pcall(options.Callback)
-                end)
-                
-                section:UpdateSize()
-                
-                return {
-                    SetText = function(text)
-                        button.Text = text
-                    end,
-                    SetCallback = function(callback)
-                        options.Callback = callback
-                    end
-                }
-            end
-            
-            function section:CreateToggle(options)
-                local toggle = {
-                    Value = options.Default or false,
-                    Callback = options.Callback
-                }
-                
-                local toggleFrame = Create("Frame", {
-                    Name = options.Name,
-                    Size = UDim2.new(1, 0, 0, 35), -- Reduced height
-                    BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Secondary,
-                    BackgroundTransparency = Nazuro.Settings.Transparency,
-                    Parent = section.Content
-                })
-                
-                Create("UICorner", {
-                    CornerRadius = UDim.new(0, 8),
-                    Parent = toggleFrame
-                })
-                
-                Create("UIStroke", {
-                    Color = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Accent,
-                    Thickness = 1,
-                    Transparency = 0.7,
-                    Parent = toggleFrame
-                })
-                
-                local toggleTitle = Create("TextLabel", {
-                    Name = "Title",
-                    Size = UDim2.new(1, -55, 1, 0),
-                    Position = UDim2.new(0, 10, 0, 0),
-                    BackgroundTransparency = 1,
-                    Text = options.Name,
-                    TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text,
-                    TextXAlignment = Enum.TextXAlignment.Left,
-                    Font = Enum.Font.Gotham,
-                    TextSize = 13, -- Slightly smaller text
-                    Parent = toggleFrame
-                })
-                
-                local toggleSwitch = Create("Frame", {
-                    Name = "Switch",
-                    Size = UDim2.new(0, 45, 0, 22), -- Slightly smaller switch
-                    Position = UDim2.new(1, -10, 0.5, -11),
-                    AnchorPoint = Vector2.new(1, 0.5),
-                    BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Secondary,
-                    BackgroundTransparency = Nazuro.Settings.Transparency,
-                    Parent = toggleFrame
-                })
-                
-                Create("UICorner", {
-                    CornerRadius = UDim.new(1, 0),
-                    Parent = toggleSwitch
-                })
-                
-                Create("UIStroke", {
-                    Color = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Accent,
-                    Thickness = 1,
-                    Transparency = 0.7,
-                    Parent = toggleSwitch
-                })
-                
-                local toggleIndicator = Create("Frame", {
-                    Name = "Indicator",
-                    Size = UDim2.new(0, 18, 0, 18), -- Slightly smaller indicator
-                    Position = toggle.Value and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9),
-                    AnchorPoint = Vector2.new(1, 0.5),
-                    BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Accent,
-                    Parent = toggleSwitch
-                })
-                
-                Create("UICorner", {
-                    CornerRadius = UDim.new(1, 0),
-                    Parent = toggleIndicator
-                })
-                
-                local function UpdateToggle()
-                    Tween(toggleIndicator, {
-                        Position = toggle.Value and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9),
-                        BackgroundColor3 = toggle.Value and Nazuro.Themes[Nazuro.Settings.CurrentTheme].Accent or Nazuro.Themes[Nazuro.Settings.CurrentTheme].SubText
-                    })
-                    
-                    pcall(toggle.Callback, toggle.Value)
-                end
-                
-                toggleFrame.MouseButton1Click:Connect(function()
-                    toggle.Value = not toggle.Value
-                    UpdateToggle()
-                end)
-                
-                section:UpdateSize()
-                
-                return {
-                    SetValue = function(value)
-                        toggle.Value = value
-                        UpdateToggle()
-                    end,
-                    GetValue = function()
-                        return toggle.Value
-                    end,
-                    SetCallback = function(callback)
-                        toggle.Callback = callback
-                    end
-                }
-            end
-            
-            function section:CreateSlider(options)
-                local slider = {
-                    Value = options.Default or options.Min,
-                    Min = options.Min or 0,
-                    Max = options.Max or 100,
-                    Callback = options.Callback
-                }
-                
-                local sliderFrame = Create("Frame", {
-                    Name = options.Name,
-                    Size = UDim2.new(1, 0, 0, 50), -- Reduced height
-                    BackgroundTransparency = 1,
-                    Parent = section.Content
-                })
-                
-                local sliderTitle = Create("TextLabel", {
-                    Name = "Title",
-                    Size = UDim2.new(1, 0, 0, 18), -- Slightly smaller
-                    BackgroundTransparency = 1,
-                    Text = options.Name,
-                    TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text,
-                    TextXAlignment = Enum.TextXAlignment.Left,
-                    Font = Enum.Font.Gotham,
-                    TextSize = 13, -- Slightly smaller text
-                    Parent = sliderFrame
-                })
-                
-                local sliderValue = Create("TextLabel", {
-                    Name = "Value",
-                    Size = UDim2.new(1, 0, 0, 18),
-                    BackgroundTransparency = 1,
-                    Text = tostring(slider.Value),
-                    TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].SubText,
-                    TextXAlignment = Enum.TextXAlignment.Right,
-                    Font = Enum.Font.Gotham,
-                    TextSize = 13,
-                    Parent = sliderFrame
-                })
-                
-                local sliderBar = Create("Frame", {
-                    Name = "Bar",
-                    Size = UDim2.new(1, 0, 0, 5),
-                    Position = UDim2.new(0, 0, 1, -12),
-                    AnchorPoint = Vector2.new(0, 1),
-                    BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Secondary,
-                    BackgroundTransparency = Nazuro.Settings.Transparency,
-                    Parent = sliderFrame
-                })
-                
-                Create("UICorner", {
-                    CornerRadius = UDim.new(1, 0),
-                    Parent = sliderBar
-                })
-                
-                Create("UIStroke", {
-                    Color = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Accent,
-                    Thickness = 1,
-                    Transparency = 0.7,
-                    Parent = sliderBar
-                })
-                
-                local sliderFill = Create("Frame", {
-                    Name = "Fill",
-                    Size = UDim2.new((slider.Value - slider.Min) / (slider.Max - slider.Min), 0, 1, 0),
-                    BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Accent,
-                    Parent = sliderBar
-                })
-                
-                Create("UICorner", {
-                    CornerRadius = UDim.new(1, 0),
-                    Parent = sliderFill
-                })
-                
-                local sliderHandle = Create("Frame", {
-                    Name = "Handle",
-                    Size = UDim2.new(0, 12, 0, 12), -- Slightly smaller handle
-                    Position = UDim2.new(sliderFill.Size.X.Scale, 0, 0.5, 0),
-                    AnchorPoint = Vector2.new(0.5, 0.5),
-                    BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Accent,
-                    Parent = sliderBar
-                })
-                
-                Create("UICorner", {
-                    CornerRadius = UDim.new(1, 0),
-                    Parent = sliderHandle
-                })
-                
-                Create("UIStroke", {
-                    Color = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text,
-                    Thickness = 2,
-                    Parent = sliderHandle
-                })
-                
-                local dragging = false
-                
-                local function UpdateSlider(value)
-                    value = math.clamp(value, slider.Min, slider.Max)
-                    slider.Value = value
-                    sliderValue.Text = tostring(math.floor(value * 100) / 100)
-                    
-                    Tween(sliderFill, {
-                        Size = UDim2.new((value - slider.Min) / (slider.Max - slider.Min), 0, 1, 0)
-                    })
-                    
-                    Tween(sliderHandle, {
-                        Position = UDim2.new(sliderFill.Size.X.Scale, 0, 0.5, 0)
-                    })
-                    
-                    pcall(slider.Callback, value)
-                end
-                
-                sliderBar.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                        dragging = true
-                        local percent = (input.Position.X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X
-                        UpdateSlider(slider.Min + percent * (slider.Max - slider.Min))
-                    end
-                end)
-                
-                sliderBar.InputEnded:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                        dragging = false
-                    end
-                end)
-                
-                UserInputService.InputChanged:Connect(function(input)
-                    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-                        local percent = (input.Position.X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X
-                        UpdateSlider(slider.Min + percent * (slider.Max - slider.Min))
-                    end
-                end)
-                
-                section:UpdateSize()
-                
-                return {
-                    SetValue = function(value)
-                        UpdateSlider(value)
-                    end,
-                    GetValue = function()
-                        return slider.Value
-                    end,
-                    SetCallback = function(callback)
-                        slider.Callback = callback
-                    end
-                }
-            end
-            
-            function section:CreateDropdown(options)
-                local dropdown = {
-                    Options = options.Options or {},
-                    Value = options.Default or options.Options[1],
-                    Callback = options.Callback,
-                    Open = false
-                }
-                
-                local dropdownFrame = Create("Frame", {
-                    Name = options.Name,
-                    Size = UDim2.new(1, 0, 0, 35), -- Reduced height
-                    BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Secondary,
-                    BackgroundTransparency = Nazuro.Settings.Transparency,
-                    Parent = section.Content
-                })
-                
-                Create("UICorner", {
-                    CornerRadius = UDim.new(0, 8),
-                    Parent = dropdownFrame
-                })
-                
-                Create("UIStroke", {
-                    Color = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Accent,
-                    Thickness = 1,
-                    Transparency = 0.7,
-                    Parent = dropdownFrame
-                })
-                
-                local dropdownTitle = Create("TextLabel", {
-                    Name = "Title",
-                    Size = UDim2.new(1, -55, 1, 0),
-                    Position = UDim2.new(0, 10, 0, 0),
-                    BackgroundTransparency = 1,
-                    Text = options.Name,
-                    TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text,
-                    TextXAlignment = Enum.TextXAlignment.Left,
-                    Font = Enum.Font.Gotham,
-                    TextSize = 13, -- Slightly smaller text
-                    Parent = dropdownFrame
-                })
-                
-                local dropdownValue = Create("TextLabel", {
-                    Name = "Value",
-                    Size = UDim2.new(1, -55, 1, 0),
-                    Position = UDim2.new(0, 10, 0, 0),
-                    BackgroundTransparency = 1,
-                    Text = tostring(dropdown.Value),
-                    TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].SubText,
-                    TextXAlignment = Enum.TextXAlignment.Right,
-                    Font = Enum.Font.Gotham,
-                    TextSize = 13,
-                    Parent = dropdownFrame
-                })
-                
-                local dropdownArrow = Create("ImageLabel", {
-                    Name = "Arrow",
-                    Size = UDim2.new(0, 18, 0, 18), -- Slightly smaller arrow
-                    Position = UDim2.new(1, -10, 0.5, -9),
-                    AnchorPoint = Vector2.new(1, 0.5),
-                    BackgroundTransparency = 1,
-                    Image = "rbxassetid://10734922324",
-                    ImageColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text,
-                    Rotation = 180,
-                    Parent = dropdownFrame
-                })
-                
-                local dropdownList = Create("Frame", {
-                    Name = "List",
-                    Size = UDim2.new(1, 0, 0, 0),
-                    Position = UDim2.new(0, 0, 1, 5),
-                    BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Secondary,
-                    BackgroundTransparency = Nazuro.Settings.Transparency,
-                    Visible = false,
-                    Parent = dropdownFrame
-                })
-                
-                Create("UICorner", {
-                    CornerRadius = UDim.new(0, 8),
-                    Parent = dropdownList
-                })
-                
-                Create("UIStroke", {
-                    Color = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Accent,
-                    Thickness = 1,
-                    Transparency = 0.7,
-                    Parent = dropdownList
-                })
-                
-                Create("UIListLayout", {
-                    SortOrder = Enum.SortOrder.LayoutOrder,
-                    Parent = dropdownList
-                })
-                
-                local function UpdateDropdown()
-                    if dropdown.Open then
-                        dropdownList.Visible = true
-                        Tween(dropdownArrow, {Rotation = 0})
-                        Tween(dropdownList, {Size = UDim2.new(1, 0, 0, #dropdown.Options * 30)}) -- Reduced option height
-                    else
-                        Tween(dropdownArrow, {Rotation = 180})
-                        Tween(dropdownList, {Size = UDim2.new(1, 0, 0, 0)}, function()
-                            dropdownList.Visible = false
-                        end)
-                    end
-                end
-                
-                local function CreateOption(option)
-                    local optionButton = Create("TextButton", {
-                        Name = tostring(option),
-                        Size = UDim2.new(1, 0, 0, 30), -- Reduced height
-                        BackgroundTransparency = 1,
-                        Text = "",
-                        Parent = dropdownList
-                    })
-                    
-                    local optionText = Create("TextLabel", {
-                        Name = "Text",
-                        Size = UDim2.new(1, -15, 1, 0),
-                        Position = UDim2.new(0, 8, 0, 0),
-                        BackgroundTransparency = 1,
-                        Text = tostring(option),
-                        TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text,
-                        TextXAlignment = Enum.TextXAlignment.Left,
-                        Font = Enum.Font.Gotham,
-                        TextSize = 13, -- Slightly smaller text
-                        Parent = optionButton
-                    })
-                    
-                    optionButton.MouseButton1Click:Connect(function()
-                        dropdown.Value = option
-                        dropdownValue.Text = tostring(option)
-                        dropdown.Open = false
-                        UpdateDropdown()
-                        pcall(dropdown.Callback, option)
-                    end)
-                    
-                    optionButton.MouseEnter:Connect(function()
-                        Tween(optionText, {
-                            TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Accent
-                        })
-                    end)
-                    
-                    optionButton.MouseLeave:Connect(function()
-                        Tween(optionText, {
-                            TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text
-                        })
-                    end)
-                end
-                
-                for _, option in ipairs(dropdown.Options) do
-                    CreateOption(option)
-                end
-                
-                dropdownFrame.MouseButton1Click:Connect(function()
-                    dropdown.Open = not dropdown.Open
-                    UpdateDropdown()
-                end)
-                
-                section:UpdateSize()
-                
-                return {
-                    SetValue = function(value)
-                        dropdown.Value = value
-                        dropdownValue.Text = tostring(value)
-                        pcall(dropdown.Callback, value)
-                    end,
-                    GetValue = function()
-                        return dropdown.Value
-                    end,
-                    SetOptions = function(options)
-                        dropdown.Options = options
-                        dropdownList:ClearAllChildren()
-                        for _, option in ipairs(options) do
-                            CreateOption(option)
-                        end
-                    end,
-                    SetCallback = function(callback)
-                        dropdown.Callback = callback
-                    end
-                }
-            end
-            
-            return section
-        end
-        
-        return tab
-    end
-    
-    return window
 end
 
-return Nazuro
+-- Create a slider
+function UILibrary:CreateSlider(props)
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Name = props.Name or "Slider"
+    sliderFrame.Size = props.Size or UDim2.new(0, 200, 0, 30)
+    sliderFrame.Position = props.Position or UDim2.new(0, 0, 0, 0)
+    sliderFrame.BackgroundTransparency = 1
+    
+    local track = Instance.new("Frame")
+    track.Name = "Track"
+    track.Size = UDim2.new(1, 0, 0, 5)
+    track.Position = UDim2.new(0, 0, 0.5, 0)
+    track.AnchorPoint = Vector2.new(0, 0.5)
+    track.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    
+    local fill = Instance.new("Frame")
+    fill.Name = "Fill"
+    fill.Size = UDim2.new(0.5, 0, 1, 0)
+    fill.Position = UDim2.new(0, 0, 0, 0)
+    fill.BackgroundColor3 = self.Theme.PrimaryColor
+    
+    local thumb = Instance.new("TextButton")
+    thumb.Name = "Thumb"
+    thumb.Size = UDim2.new(0, 20, 0, 20)
+    thumb.Position = UDim2.new(0.5, -10, 0.5, -10)
+    thumb.AnchorPoint = Vector2.new(0.5, 0.5)
+    thumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    thumb.Text = ""
+    thumb.AutoButtonColor = false
+    
+    -- Add corner radius
+    if self.Theme.CornerRadius then
+        local trackCorner = Instance.new("UICorner")
+        trackCorner.CornerRadius = UDim.new(1, 0)
+        trackCorner.Parent = track
+        
+        local fillCorner = Instance.new("UICorner")
+        fillCorner.CornerRadius = UDim.new(1, 0)
+        fillCorner.Parent = fill
+        
+        local thumbCorner = Instance.new("UICorner")
+        thumbCorner.CornerRadius = UDim.new(1, 0)
+        thumbCorner.Parent = thumb
+    end
+    
+    local min = props.Min or 0
+    local max = props.Max or 100
+    local value = props.Default or min
+    
+    local function updateSlider()
+        local ratio = (value - min) / (max - min)
+        fill.Size = UDim2.new(ratio, 0, 1, 0)
+        thumb.Position = UDim2.new(ratio, -10, 0.5, -10)
+        
+        if props.OnChange then
+            props.OnChange(value)
+        end
+    end
+    
+    local dragging = false
+    
+    thumb.MouseButton1Down:Connect(function()
+        dragging = true
+    end)
+    
+    game:GetService("UserInputService").InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local mousePos = game:GetService("Players").LocalPlayer:GetMouse().X
+            local absolutePos = sliderFrame.AbsolutePosition.X
+            local absoluteSize = sliderFrame.AbsoluteSize.X
+            
+            local relativePos = math.clamp(mousePos - absolutePos, 0, absoluteSize)
+            local ratio = relativePos / absoluteSize
+            value = math.floor(min + (max - min) * ratio)
+            
+            updateSlider()
+        end
+    end)
+    
+    fill.Parent = track
+    track.Parent = sliderFrame
+    thumb.Parent = sliderFrame
+    
+    if props.Parent then
+        sliderFrame.Parent = props.Parent
+    end
+    
+    -- Initialize
+    updateSlider()
+    
+    return {
+        Frame = sliderFrame,
+        SetValue = function(newValue)
+            value = math.clamp(newValue, min, max)
+            updateSlider()
+        end,
+        GetValue = function()
+            return value
+        end
+    }
+end
+
+return UILibrary
