@@ -4,1343 +4,801 @@
 local game = game
 local GetService = game.GetService
 
-cloneref = cloneref or function(...)
-    return ...
-end
-isfile = isfile or function()
-    return true
-end
-isfolder = isfolder or function()
-    return true
-end
-
+-- Roblox services
 local UserInputService = GetService(game, "UserInputService")
 local TweenService = GetService(game, "TweenService")
 local HttpService = GetService(game, "HttpService")
 local RunService = GetService(game, "RunService")
 local Players = GetService(game, "Players")
-local CoreGui = cloneref(GetService(game, "CoreGui"))
-local TextChatService = GetService(game, "TextChatService")
+local CoreGui = cloneref and cloneref(GetService(game, "CoreGui")) or GetService(game, "CoreGui")
+local InsertService = GetService(game, "InsertService")
+
+-- Player and input
 local Player = Players.LocalPlayer
 local Mouse = Player:GetMouse()
+local IsOnMobile = table.find({Enum.Platform.IOS, Enum.Platform.Android}, UserInputService:GetPlatform())
+local IsOnEmulator = IsOnMobile and UserInputService.KeyboardEnabled
 
-local IsOnMobile = table.find({
-    Enum.Platform.IOS,
-    Enum.Platform.Android
-}, UserInputService:GetPlatform())
-local IsOnEmulator = IsOnMobile and UserInputService.KeyboardEnabled 
+-- File handling stubs
+local isfile = isfile or function() return true end
+local isfolder = isfolder or function() return true end
+local makefolder = makefolder or function() end
+local writefile = writefile or function() end
+local readfile = readfile or function() return nil end
 
+-- Constants and configuration
+local CONFIG_DIR = "Nazuro/Configurations/"
+local ASSETS_DIR = "Nazuro/Assets/"
+local DEFAULT_DURATION = 5
 local Profile = Players:GetUserThumbnailAsync(Player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
 
-local DefaultDuration = 5
-local LibraryName = "Nazuro"
-local Configurations = LibraryName .. "/Configurations/"
-local Assets = LibraryName .. "/Assets/"
-
+-- Default configuration
 local Configuration = {
-    Toggles = {},
-    Dropdowns = {},
-    Sliders = {},
-    Inputs = {},
-    Keybinds = {},
+	Toggles = {},
+	Dropdowns = {},
+	Sliders = {},
+	Inputs = {},
+	Keybinds = {},
 }
 
-if RunService:IsStudio() then
-    CoreGui = Players.LocalPlayer.PlayerGui
-end
-
+-- File handling functions
 local function SafeMakeFolder(path)
-    if not isfolder(path) then
-        local success, err = pcall(makefolder, path)
-        if not success then
-            warn("Failed to create folder: " .. path .. " | Error: " .. tostring(err))
-        end
-    end
+	if not isfolder(path) then
+		local success, err = pcall(makefolder, path)
+		if not success then warn("Failed to create folder: " .. path .. " | Error: " .. tostring(err)) end
+	end
 end
 
 local function SafeWriteFile(filepath, content)
-    local success, err = pcall(writefile, filepath, content)
-    if not success then
-        warn("Failed to write file: " .. filepath .. " | Error: " .. tostring(err))
-    end
+	local success, err = pcall(writefile, filepath, content)
+	if not success then warn("Failed to write file: " .. filepath .. " | Error: " .. tostring(err)) end
 end
 
 local function SafeReadFile(filepath)
-    if isfile(filepath) then
-        local success, content = pcall(readfile, filepath)
-        if success then
-            return content
-        else
-            warn("Failed to read file: " .. filepath .. " | Error: " .. tostring(content))
-        end
-    else
-        warn("File does not exist: " .. filepath)
-    end
-    return nil
+	if isfile(filepath) then
+		local success, content = pcall(readfile, filepath)
+		if success then return content end
+		warn("Failed to read file: " .. filepath .. " | Error: " .. tostring(content))
+	end
+	warn("File does not exist: " .. filepath)
+	return nil
 end
 
 local function SafeHttpGet(url)
-    local success, content = pcall(game.HttpGetAsync, game, url)
-    if success then
-        return content
-    else
-        warn("Failed to fetch URL: " .. url .. " | Error: " .. tostring(content))
-    end
-    return nil
+	local success, content = pcall(game.HttpGetAsync, game, url)
+	if success then return content end
+	warn("Failed to fetch URL: " .. url .. " | Error: " .. tostring(content))
+	return nil
 end
 
-SafeMakeFolder(LibraryName)
-SafeMakeFolder(Configurations)
+SafeMakeFolder("Nazuro")
+SafeMakeFolder(CONFIG_DIR)
+SafeMakeFolder(ASSETS_DIR)
 
-local GenerateString = function()
-    local Charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    local Result = ""
-    for I = 1, 12 do
-        local RandIndex = math.random(1, #Charset)
-        Result = Result .. Charset:sub(RandIndex, RandIndex)
-    end
-    return Result
-end
-
-local ConfigFilePath = Configurations .. "UI.json"
-if not isfile(ConfigFilePath) then
-    SafeWriteFile(ConfigFilePath, HttpService:JSONEncode(Configuration))
+-- Load or initialize configuration
+local configFilePath = CONFIG_DIR .. "UI.json"
+if not isfile(configFilePath) then
+	SafeWriteFile(configFilePath, HttpService:JSONEncode(Configuration))
 else
-    local Content = SafeReadFile(ConfigFilePath)
-    if Content then
-        local Success, Decoded = pcall(HttpService.JSONDecode, HttpService, Content)
-        if Success then
-            Configuration = Decoded
-
-            if not Configuration.Keybinds then
-                Configuration.Keybinds = {}
-                SafeWriteFile(ConfigFilePath, HttpService:JSONEncode(Configuration))
-            end
-        end
-    end
+	local content = SafeReadFile(configFilePath)
+	if content then
+		local success, decoded = pcall(HttpService.JSONDecode, HttpService, content)
+		if success then
+			Configuration = decoded
+			if not Configuration.Keybinds then
+				Configuration.Keybinds = {}
+				SafeWriteFile(configFilePath, HttpService:JSONEncode(Configuration))
+			end
+		end
+	end
 end
 
+-- Save configuration
 local function SaveConfiguration()
-    SafeMakeFolder(Configurations)
-    SafeWriteFile(Configurations .. "UI.json", HttpService:JSONEncode(Configuration))
+	SafeMakeFolder(CONFIG_DIR)
+	SafeWriteFile(configFilePath, HttpService:JSONEncode(Configuration))
 end
 
+-- Generate random string
+local function GenerateString()
+	local charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	local result = ""
+	for _ = 1, 12 do
+		local randIndex = math.random(1, #charset)
+		result = result .. charset:sub(randIndex, randIndex)
+	end
+	return result
+end
+
+-- Theme configuration
 local Nazuro = {
-    Theme = {
-        Dark = {
-            TextColor = Color3.fromRGB(240, 240, 240),
-            MainColor = Color3.fromRGB(16, 16, 16),
-            SecondaryColor = Color3.fromRGB(22, 22, 22),
-            NotificationActionsBackground = Color3.fromRGB(230, 230, 230),
-            ImageColor = Color3.fromRGB(255, 255, 255),
-            TabBackground = Color3.fromRGB(80, 80, 80),
-            TabStroke = Color3.fromRGB(85, 85, 85),
-            TabBackgroundSelected = Color3.fromRGB(210, 210, 210),
-            TabTextColor = Color3.fromRGB(240, 240, 240),
-            SelectedTabTextColor = Color3.fromRGB(50, 50, 50),
-            SliderColor = Color3.fromRGB(255, 255, 255),
-            ToggleEnabled = Color3.fromRGB(255, 255, 255),
-            ToggleDisabled = Color3.fromRGB(139, 139, 139),
-            CardButton = Color3.fromRGB(230, 230, 230),
-            TweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quint)
-        }
-    }
+	Theme = {
+		Dark = {
+			TextColor = Color3.fromRGB(240, 240, 240),
+			MainColor = Color3.fromRGB(16, 16, 16),
+			SecondaryColor = Color3.fromRGB(22, 22, 22),
+			NotificationBackground = Color3.fromRGB(230, 230, 230),
+			ImageColor = Color3.fromRGB(255, 255, 255),
+			TabBackground = Color3.fromRGB(80, 80, 80),
+			TabStroke = Color3.fromRGB(85, 85, 85),
+			TabBackgroundSelected = Color3.fromRGB(210, 210, 210),
+			TabTextColor = Color3.fromRGB(240, 240, 240),
+			SelectedTabTextColor = Color3.fromRGB(50, 50, 50),
+			SliderColor = Color3.fromRGB(255, 255, 255),
+			ToggleEnabled = Color3.fromRGB(255, 255, 255),
+			ToggleDisabled = Color3.fromRGB(139, 139, 139),
+			TweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quint)
+		}
+	}
 }
 
-local RandomId = tostring(math.random(1, 100)) .. tostring(math.random(1, 50)) .. tostring(math.random(1, 100))
+-- Dragging functionality
+function Nazuro:DragFunc(frame, target)
+	target = target or frame
+	local dragging = false
+	local dragInput, dragStart, startPos
 
-function Nazuro:DragFunc(Dragger, Target)
-    Target = Target or Dragger
-    local Dragging = false
-    local DragInput, DragStart, StartPos
-    
-    Dragger.InputBegan:Connect(function(Input)
-        if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-            Dragging = true
-            DragStart = Input.Position
-            StartPos = Target.Position
-            
-            Input.Changed:Connect(function()
-                if Input.UserInputState == Enum.UserInputState.End then
-                    Dragging = false
-                end
-            end)
-        end
-    end)
-    
-    Dragger.InputChanged:Connect(function(Input)
-        if Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch then
-            DragInput = Input
-        end
-    end)
-    
-    UserInputService.InputChanged:Connect(function(Input)
-        if Input == DragInput and Dragging then
-            local Delta = Input.Position - DragStart
-            Target.Position = UDim2.new(StartPos.X.Scale, StartPos.X.Offset + Delta.X, StartPos.Y.Scale, StartPos.Y.Offset + Delta.Y)
-        end
-    end)
+	frame.InputBegan:Connect(function(input)
+		if enter code hereinput.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = target.Position
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	frame.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			dragInput = input
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			local delta = input.Position - dragStart
+			target.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Lua
+Y)
+		end
+	end)
 end
 
--- Import UI
-local UIInstance 
+-- Load UI instance
+local UI
 if RunService:IsStudio() then
-    UIInstance = CoreGui:WaitForChild("UI_Library")
+	UI = Player.PlayerGui:WaitForChild("UI_Library")
 else
-    UIInstance = game:GetObjects("rbxassetid://129033108166316")[1] -- Replace with your own asset ID
+	UI = game:GetObjects("rbxassetid://129033108166316")[1] -- Replace with your asset ID
 end
 
-UIInstance.Name = GenerateString()
-UIInstance.Enabled = false
-UIInstance.IgnoreGuiInset = false
-UIInstance.Parent = CoreGui
+UI.Name = GenerateString()
+UI.Enabled = false
+UI.IgnoreGuiInset = false
+UI.Parent = CoreGui
 
 if gethui then
-    UIInstance.Parent = gethui()
+	UI.Parent = gethui()
 elseif CoreGui:FindFirstChild("RobloxGui") then
-    UIInstance.Parent = CoreGui:FindFirstChild("RobloxGui")
+	UI.Parent = CoreGui:FindFirstChild("RobloxGui")
 else
-    UIInstance.Parent = CoreGui
+	UI.Parent = CoreGui
 end
 
-function Nazuro:ToggleUI(State)
-    UIInstance.Main.Visible = State or not UIInstance.Main.Visible
+-- Toggle UI visibility
+function Nazuro:ToggleUI(state)
+	UI.Main.Visible = state or not UI.Main.Visible
 end
 
 function Nazuro:GetUIInstance()
-    return UIInstance
+	return UI
 end
 
+-- Mobile button support
 function Nazuro:CreateMobileButton()
-    local Circle = UIInstance.MobileCircle
-    Circle.Visible = true
-
-    Circle.MouseButton1Click:Connect(function()
-        Nazuro:ToggleUI()
-    end)
-
-    Nazuro:DragFunc(Circle, UIInstance.Main)
+	local circle = UI.MobileCircle
+	circle.Visible = true
+	circle.MouseButton1Click:Connect(function()
+		Nazuro:ToggleUI()
+	end)
+	Nazuro:DragFunc(circle, UI.Main)
 end
 
-function Nazuro:Notify(Title, NotificationData)
-    task.spawn(function()
-        local Duration = NotificationData.Duration or DefaultDuration
-        local Notification = UIInstance.Notifications[Title]:Clone()
-        Notification.Parent = UIInstance.Notifications
-        Notification.Name = NotificationData.Title or "Unknown Title"
-        Notification.Parent = UIInstance.Notifications
-        Notification.Visible = true
-        Notification.Actions.ButtonTemplate.Visible = false
-        
-        if NotificationData.Actions then
-            for ActionName, ActionData in next, NotificationData.Actions do
-                local ActionButton = Notification.Actions.ButtonTemplate:Clone()
-                ActionButton.Name = ActionData.Name
-                ActionButton.Visible = true
-                ActionButton.Parent = Notification.Actions
-                ActionButton.Text = ActionData.Name
-                ActionButton.Size = UDim2.new(0, ActionButton.TextBounds.X + 27, 1, 0)
-                ActionButton.MouseButton1Click:Connect(function()
-                    local Success, Error = pcall(ActionData.Callback)
-                    Duration = 0
-                end)
-            end
-        end
-        
-        Notification.Title.Text = NotificationData.Title or "Unknown"
-        Notification.Description.Text = NotificationData.Content or "Unknown"
-        
-        if NotificationData.Image then
-            Notification.Icon.Image = NotificationData.Image
-        end
-        
-        while Duration >= 0 do
-            Notification.Duration.Text = Duration
-            task.wait(1)
-            Duration = Duration - 1
-        end
-        Notification:Destroy()
-    end)
+-- Notification system
+function Nazuro:Notify(title, options)
+	task.spawn(function()
+		local duration = options.Duration or DEFAULT_DURATION
+		local notification = UI.Notifications[title]:Clone()
+		notification.Name = options.Title or "Unknown"
+		notification.Parent = UI.Notifications
+		notification.Visible = true
+		notification.Actions.ButtonTemplate.Visible = false
+
+		if options.Actions then
+			for _, action in pairs(options.Actions) do
+				local button = notification.Actions.ButtonTemplate:Clone()
+				button.Name = action.Name
+				button.Visible = true
+				button.Parent = notification.Actions
+				button.Text = action.Name
+				button.Size = UDim2.new(0, button.TextBounds.X + 27, 1, 0)
+				button.MouseButton1Click:Connect(function()
+					local success, err = pcall(action.Callback)
+					duration = 0
+				end)
+			end
+		end
+
+		notification.Title.Text = options.Title or "Unknown"
+		notification.Description.Text = options.Content or "Unknown"
+		if options.Image then
+			notification.Icon.Image = options.Image
+		end
+
+		while duration >= 0 do
+			notification.Duration.Text = duration
+			task.wait(1)
+			duration -= 1
+		end
+		notification:Destroy()
+	end)
 end
 
-function Nazuro:CreateLibrary(LibraryData, Icon)
-    local Library = {
-        Name = typeof(LibraryData) == "table" and LibraryData.Name or (typeof(LibraryData) == "string" and LibraryData or "Nazuro"),
-        Icon = typeof(LibraryData) == "table" and LibraryData.Icon or Icon
-    }
-    
-    local SideBar = UIInstance.Main.SideBar
-    local Buttons = SideBar.Buttons
-    local TabContainer = UIInstance.Main.TabContainer
-    
-    SideBar.NameText.Text = Library.Name
-    UIInstance.Main.Profile.Image = Profile
-    Buttons.Template.Visible = false
-    
-    Nazuro:DragFunc(SideBar, UIInstance.Main)
-    Nazuro:DragFunc(UIInstance.Main.Title, UIInstance.Main)
-
-    function Nazuro:SwitchTo(Tab)
-        if TabContainer:FindFirstChild(Tab) then
-            TabContainer.UIPageLayout:JumpTo(TabContainer:FindFirstChild(Tab))
-        end
-    end
-
-    Buttons.Parent.Minimize.MouseButton1Click:Connect(function()
-        if TabContainer:FindFirstChild("Settings") then
-            TabContainer.UIPageLayout:JumpTo(TabContainer:FindFirstChild("Settings"))
-        end
-    end)
-
-    UIInstance.Enabled = true
-
-    local LibraryFunctions = {}
-    
-    function LibraryFunctions:Notify(NotificationData, Content, Duration, Actions)
-        task.spawn(function()
-            UIInstance.Main.Notifications.Visible = true
-            local Duration = typeof(NotificationData) == "table" and NotificationData.Duration or Duration or DefaultDuration
-            local Notification = UIInstance.Main.Notifications.Template
-            Notification.Parent = UIInstance.Notifications
-            Notification.Duration.Text = Duration
-            Notification.Parent = UIInstance.Main.Notifications
-            Notification.Visible = true
-            
-            for _, Child in next, Notification.Actions:GetChildren() do
-                if Child.Name ~= "ButtonTemplate" and not Child:IsA("UIListLayout") then
-                    Child:Destroy()
-                end
-            end
-            
-            Notification.Actions.ButtonTemplate.Visible = false
-            
-            if typeof(NotificationData) == "table" and NotificationData.Actions or Actions then
-                for ActionName, ActionData in next, (typeof(NotificationData) == "table" and NotificationData.Actions or Actions) do
-                    local ActionButton = Notification.Actions.ButtonTemplate:Clone()
-                    ActionButton.Name = ActionData.Name
-                    ActionButton.Visible = true
-                    ActionButton.Parent = Notification.Actions
-                    ActionButton.Text = ActionData.Name
-                    ActionButton.Size = UDim2.new(0, ActionButton.TextBounds.X + 27, 1, 0)
-                    ActionButton.MouseButton1Click:Connect(function()
-                        local Success, Error = pcall(ActionData.Callback)
-                    end)
-                end
-            end
-            
-            Notification.Title.Text = typeof(NotificationData) == "table" and NotificationData.Title or NotificationData or "Unknown"
-            Notification.Description.Text = typeof(NotificationData) == "table" and NotificationData.Content or Content or "Unknown"
-            
-            while Duration >= 0 do
-                Notification.Duration.Text = Duration
-                task.wait(1)
-                Duration = Duration - 1
-            end
-            
-            UIInstance.Main.Notifications.Visible = false
-            for _, Child in next, Notification.Actions:GetChildren() do
-                if Child.Name ~= "ButtonTemplate" and not Child:IsA("UIListLayout") then
-                    Child:Destroy()
-                end
-            end
-        end)
-    end
-    
-    task.spawn(function()
-        if IsOnMobile and not IsOnEmulator then
-            local MobileButton = UIInstance.MobileCircle
-            MobileButton.MouseButton1Click:Connect(function()
-                Nazuro:ToggleUI()
-            end)
-            Nazuro:DragFunc(MobileButton)
-            MobileButton.Visible = true
-        end
-    end)
-    
-    function LibraryFunctions:CreateTab(TabData, Icon)
-        if not TabData then
-            return
-        end
-
-        local TabInstance
-
-        if TabData ~= "Settings" then
-            local TabButton = Buttons.Template:Clone()
-            TabButton.ImageLabel.Image = typeof(TabData) == "table" and TabData.Icon or Icon or "rbxassetid://11432859220"
-            TabButton.ImageLabel.BackgroundTransparency = 1
-            TabButton.BackgroundTransparency = 1
-            TabButton.TextLabel.Text = typeof(TabData) == "table" and TabData.Title or TabData or "Unknown"
-            TabButton.Visible = true
-            TabButton.Parent = Buttons
-            
-            TabInstance = TabContainer.Template:Clone()
-            TabContainer.Template.Visible = false
-            TabInstance.Parent = TabContainer
-            TabInstance.Name = typeof(TabData) == "table" and TabData.Title or TabData or "Unknown"
-            TabInstance.Visible = true
-            TabInstance.LayoutOrder = #TabContainer:GetChildren()
-            
-            for _, Child in next, TabInstance:GetChildren() do
-                if Child.ClassName == "Frame" then
-                    Child:Destroy()
-                end
-            end
-            
-            TabButton.MouseButton1Click:Connect(function()
-                if TabContainer.UIPageLayout.CurrentPage ~= TabInstance then
-                    TabContainer.UIPageLayout:JumpTo(TabInstance)
-                end
-            end)
-        else
-            TabInstance = TabContainer.Template:Clone()
-            TabContainer.Template.Visible = false
-            TabInstance.Parent = TabContainer
-            TabInstance.Name = typeof(TabData) == "table" and TabData.Title or TabData or "Unknown"
-            TabInstance.Visible = true
-            TabInstance.LayoutOrder = #TabContainer:GetChildren()
-            
-            for _, Child in next, TabInstance:GetChildren() do
-                if Child.ClassName == "Frame" then
-                    Child:Destroy()
-                end
-            end
-        end
-
-        if TabData == "Main" then
-            TabContainer.UIPageLayout:JumpTo(TabInstance)
-        end
-
-        local TabFunctions = {}
-        
-        function TabFunctions:CreateSection(SectionName, SectionType)
-            local SectionFunctions = {}
-            local SectionInstance
-            
-            if SectionType == "Normal" then
-                SectionInstance = TabContainer.Template.SectionTitle:Clone()
-                SectionInstance.Name = SectionName
-                SectionInstance.Title.Text = SectionName
-                SectionInstance.Visible = true
-                SectionInstance.Parent = TabInstance
-            elseif SectionType == "Foldable" then
-                SectionInstance = TabContainer.Template.FoldableSectionTitle:Clone()
-                SectionInstance.Name = SectionName
-                SectionInstance.Title.Text = SectionName
-                SectionInstance.Visible = true
-                SectionInstance.Parent = TabInstance
-            end
-            
-            SectionInstance.Title.TextTransparency = 1
-            TweenService:Create(SectionInstance.Title, TweenInfo.new(0.7, Enum.EasingStyle.Quint), {
-                TextTransparency = 0
-            }):Play()
-            
-            function SectionFunctions:SetName(NewName)
-                SectionInstance.Title.Text = NewName
-            end
-            
-            local function UpdateSize()
-                local ContentSize = SectionInstance.UIListLayout.AbsoluteContentSize
-                local ScaleFactor = 1
-
-                local UIScale = SectionInstance:FindFirstChild("UIScale")
-                if UIScale then
-                    ScaleFactor = UIScale.Scale
-                end
-
-                SectionInstance.Size = UDim2.new(1, 0, 0, ContentSize.Y * ScaleFactor)
-            end
-            
-            if SectionType == "Foldable" then
-                local IsExpanded = true
-                SectionInstance.Title.TextButton.MouseButton1Click:Connect(function()
-                    if IsExpanded then
-                        IsExpanded = false
-                        for _, Child in next, SectionInstance:GetChildren() do
-                            if Child.Name ~= "UIListLayout" and Child.Name ~= "UIPadding" and not Child:IsA("TextLabel") then
-                                Child.Visible = false
-                            end
-                        end
-                    else
-                        IsExpanded = true
-                        for _, Child in next, SectionInstance:GetChildren() do
-                            if Child.Name ~= "UIListLayout" and Child.Name ~= "UIPadding" and not Child:IsA("TextLabel") then
-                                Child.Visible = true
-                            end
-                        end
-                    end
-                    UpdateSize()
-                end)
-            end
-
-            function SectionFunctions:Remove()
-                if SectionInstance then
-                    SectionInstance:Destroy()
-                    SectionInstance = nil
-                end
-            end
-
-            function SectionFunctions:CreateButton(ButtonData)
-                local ButtonFunctions = {
-                    Callback = ButtonData.Callback
-                }
-                
-                local ButtonInstance = TabContainer.Template.Button:Clone()
-                ButtonInstance.Name = ButtonData.Name or "Undefined"
-                ButtonInstance.Title.Text = ButtonData.Name or "Undefined"
-                ButtonInstance.Icon.Image = ButtonData.Icon or "rbxassetid://3944703587"
-                ButtonInstance.Visible = true
-                ButtonInstance.Parent = SectionInstance
-
-                UpdateSize()
-                
-                ButtonInstance.Interact.MouseButton1Click:Connect(function()
-                    local Success, Error = pcall(ButtonFunctions.Callback)
-                    if not Success then
-                        local OriginalSize = ButtonInstance.Size
-                        TweenService:Create(ButtonInstance, Nazuro.Theme.Dark.TweenInfo, {
-                            Size = UDim2.new(0.992, -10, 0, 35)
-                        }):Play()
-                        TweenService:Create(ButtonInstance, Nazuro.Theme.Dark.TweenInfo, {
-                            BackgroundColor3 = Color3.fromRGB(103, 0, 0)
-                        }):Play()
-                        ButtonInstance.Title.Text = "Something failed on our end"
-                        warn("[Nazuro]: An error occurred: " .. tostring(Error))
-                        task.wait(0.5)
-                        ButtonInstance.Title.Text = ButtonData.Name
-                        TweenService:Create(ButtonInstance, Nazuro.Theme.Dark.TweenInfo, {
-                            Size = OriginalSize
-                        }):Play()
-                        TweenService:Create(ButtonInstance, Nazuro.Theme.Dark.TweenInfo, {
-                            BackgroundColor3 = Nazuro.Theme.Dark.SecondaryColor
-                        }):Play()
-                    else
-                        local OriginalSize = ButtonInstance.Size
-                        TweenService:Create(ButtonInstance, Nazuro.Theme.Dark.TweenInfo, {
-                            Size = UDim2.new(0.992, -10, 0, 35)
-                        }):Play()
-                        task.wait(0.2)
-                        TweenService:Create(ButtonInstance, Nazuro.Theme.Dark.TweenInfo, {
-                            Size = OriginalSize
-                        }):Play()
-                    end
-                end)
-                
-                function ButtonFunctions:SetCallback(NewCallback)
-                    ButtonFunctions.Callback = NewCallback
-                end
-
-                function ButtonFunctions:Remove()
-                    ButtonInstance:Destroy()
-                    UpdateSize()
-                end
-
-                function ButtonFunctions:SetName(NewName)
-                    ButtonInstance.Title.Text = NewName
-                    ButtonInstance.Name = NewName
-                end
-                
-                return ButtonFunctions
-            end
-
-            function SectionFunctions:CreateToggle(ToggleType, ToggleData)
-                local ToggleFunctions = {}
-                local ToggleInstance = (ToggleType == "Radio" and TabContainer.Template.Toggle_Radio:Clone() or TabContainer.Template.Toggle:Clone())
-                local ToggleInteract = ToggleInstance.Interact
-                local ToggleSwitch = ToggleInstance.Switch
-                local ToggleIndicator = ToggleSwitch.Indicator
-                local Flag = ToggleData.Flag
-                local CurrentValue = Flag and Configuration.Toggles[Flag] or ToggleData.CurrentValue
-
-                if Flag and not Configuration.Toggles[Flag] then
-                    Configuration.Toggles[Flag] = ToggleData.CurrentValue
-                    SaveConfiguration()
-                end
-
-                local function SetToggle(Value)
-                    if Flag then
-                        Configuration.Toggles[Flag] = Value
-                        SaveConfiguration()
-                    end
-                    CurrentValue = Value
-
-                    if ToggleType == "Radio" then
-                        TweenService:Create(ToggleIndicator, Nazuro.Theme.Dark.TweenInfo, {
-                            BackgroundTransparency = Value and 0 or 1
-                        }):Play()
-                    elseif ToggleType == "Normal" then
-                        TweenService:Create(ToggleIndicator, Nazuro.Theme.Dark.TweenInfo, {
-                            BackgroundColor3 = Value and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(139, 139, 139)
-                        }):Play()
-                        TweenService:Create(ToggleIndicator, Nazuro.Theme.Dark.TweenInfo, {
-                            Position = Value and UDim2.new(0.537, 0, 0.5, 0) or UDim2.new(0.07, 0, 0.5, 0)
-                        }):Play()
-                    end
-
-                    local Success, Error = pcall(function()
-                        task.spawn(function()
-                            ToggleData.Callback(Value)
-                        end)
-                    end)
-                    
-                    if not Success then
-                        TweenService:Create(ToggleInstance, Nazuro.Theme.Dark.TweenInfo, {
-                            BackgroundColor3 = Color3.fromRGB(103, 0, 0)
-                        }):Play()
-                        ToggleInstance.Title.Text = "Something failed on our end"
-                        warn("[Nazuro]: An error occurred: " .. tostring(Error))
-                        task.wait(0.5)
-                        ToggleInstance.Title.Text = ToggleData.Name
-                        TweenService:Create(ToggleInstance, Nazuro.Theme.Dark.TweenInfo, {
-                            BackgroundColor3 = Nazuro.Theme.Dark.SecondaryColor
-                        }):Play()
-                    end
-                end
-
-                if ToggleType == "Radio" then
-                    ToggleIndicator.BackgroundTransparency = 1
-                    ToggleIndicator.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-                    ToggleInstance.Name = ToggleData.Name
-                    ToggleInstance.Title.Text = ToggleData.Name
-                    ToggleInstance.Visible = true
-                    ToggleInstance.Parent = SectionInstance
-                    if InitialValue then
-                        SetToggle(InitialValue)
-                    end
-                    UpdateSize()
-                    ToggleInstance.Interact.MouseButton1Click:Connect(function()
-                        SetToggle(not CurrentValue)
-                    end)
-                    ToggleData.SetToggle = SetToggle
-                    return ToggleData
-                elseif ToggleType == "Normal" then
-                    ToggleInstance.Name = ToggleData.Name
-                    ToggleInstance.Title.Text = ToggleData.Name
-                    ToggleInstance.Visible = true
-                    ToggleInstance.Parent = SectionInstance
-                    if InitialValue then
-                        SetToggle(InitialValue)
-                    end
-                    UpdateSize()
-                    ToggleInstance.Interact.MouseButton1Click:Connect(function()
-                        SetToggle(not CurrentValue)
-                    end)
-                    ToggleData.SetToggle = SetToggle
-                    return ToggleData
-                end
-            end
-
-            function SectionFunctions:CreateKeybind(KeybindData)
-                local Name = KeybindData.Name
-                local Callback = KeybindData.Callback
-                local Type = KeybindData.Type
-                local Flag = KeybindData.Flag
-                local CurrentKeybind = Flag and Configuration.Toggles[Flag] or KeybindData.Keybind or "..."
-
-                local KeybindState = {
-                    MouseDown = false,
-                    Deciding = false,
-                    Enabled = false,
-                }
-
-                if Flag and not Configuration.Keybinds[Flag] then
-                    Configuration.Keybinds[Flag] = KeybindData.Flag
-                    SaveConfiguration()
-                end
-
-                local KeybindInstance = TabContainer.Template.Keybind:Clone()
-                KeybindInstance.Name = Name 
-                KeybindInstance.Title.Text = Name
-                KeybindInstance.KeybindFrame.KeybindBox.Text = CurrentKeybind 
-
-                KeybindInstance.KeybindFrame.KeybindBox.MouseButton1Click:Connect(function()
-                    KeybindState.MouseDown = true
-                    KeybindState.Deciding = true
-                    KeybindInstance.KeybindFrame.KeybindBox.Text = "..."
-
-                    local EndedInput
-                    repeat
-                        EndedInput = UserInputService.InputEnded:Wait()
-                    until EndedInput.UserInputType == Enum.UserInputType.Keyboard or EndedInput.UserInputType == Enum.UserInputType.Touch
-
-                    if KeybindState.MouseDown then
-                        KeybindState.Deciding = false
-                        KeybindState.Hover = false
-                        KeybindState.MouseDown = false
-
-                        if EndedInput.UserInputType == Enum.UserInputType.MouseButton1 or EndedInput.UserInputType == Enum.UserInputType.Touch then
-                            KeybindInstance.KeybindFrame.KeybindBox.Text = CurrentKeybind
-                        else
-                            CurrentKeybind = EndedInput.KeyCode.Name
-                            KeybindInstance.KeybindFrame.KeybindBox.Text = CurrentKeybind
-                        end
-
-                        if Flag then
-                            Configuration.Keybinds[Flag] = CurrentKeybind
-                            SaveConfiguration()
-                        end
-                    end
-                end)
-
-                if Type == "Press" then
-                    UserInputService.InputBegan:Connect(function(Input)
-                        if CurrentKeybind == "..." then return end
-                        if Input.KeyCode == Enum.KeyCode[CurrentKeybind] then
-                            KeybindState.Enabled = not KeybindState.Enabled
-
-                            task.spawn(function()
-                                Callback(KeybindState.Enabled)
-                            end)
-                        end
-                    end)
-                end
-
-                if Type == "Hold" then
-                    UserInputService.InputBegan:Connect(function(Input)
-                        if CurrentKeybind == "..." then return end
-                        if Input.KeyCode == Enum.KeyCode[CurrentKeybind] then
-                            KeybindState.Enabled = true
-                        end
-                    end)
-
-                    UserInputService.InputEnded:Connect(function(Input)
-                        if CurrentKeybind == "..." then return end
-                        if Input.KeyCode == Enum.KeyCode[CurrentKeybind] then
-                            KeybindState.Enabled = false
-                        end
-                    end)
-
-                    RunService.RenderStepped:Connect(function()
-                        if KeybindState.Enabled then
-                            task.spawn(function()
-                                Callback(true)
-                            end)
-                        end
-                    end)
-                end
-
-                KeybindInstance.Visible = true
-                KeybindInstance.Parent = SectionInstance
-                UpdateSize()
-            end
-
-            function SectionFunctions:CreateSlider(SliderData)
-                local Sliding = false
-                local SliderInstance = TabContainer.Template.Slider:Clone()
-                local Flag = SliderData.Flag
-                local CurrentValue = Flag and Configuration.Sliders[Flag] or SliderData.CurrentValue
-
-                if Flag and Configuration.Sliders[Flag] then
-                    pcall(function()
-                        SliderData.Callback(CurrentValue)
-                    end)
-                end
-
-                SliderInstance.Name = SliderData.Name
-                SliderInstance.Title.Text = SliderData.Name
-                SliderInstance.Title.TextScaled = false
-                SliderInstance.Visible = true
-                SliderInstance.Parent = SectionInstance
-                UpdateSize()
-                
-                SliderInstance.Main.Progress.Size = UDim2.new(0, SliderInstance.Main.AbsoluteSize.X * (CurrentValue + SliderData.Value[1]) / (SliderData.Value[2] - SliderData.Value[1]) > 5 and SliderInstance.Main.AbsoluteSize.X * CurrentValue / (SliderData.Value[2] - SliderData.Value[1]) or 5, 1, 0)
-                
-                if not SliderData.Suffix then
-                    SliderInstance.Main.Information.Text = tostring(CurrentValue)
-                else
-                    SliderInstance.Main.Information.Text = tostring(CurrentValue) .. " " .. SliderData.Suffix
-                end
-                
-                SliderInstance.Main.Interact.InputBegan:Connect(function(Input)
-                    if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                        Sliding = true
-                    end
-                end)
-                
-                SliderInstance.Main.Interact.InputEnded:Connect(function(Input)
-                    if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                        Sliding = false
-                    end
-                end)
-                
-                SliderInstance.Main.Interact.MouseButton1Down:Connect(function()
-                    local ProgressStart = SliderInstance.Main.Progress.AbsolutePosition.X + SliderInstance.Main.Progress.AbsoluteSize.X
-                    local ProgressEnd = ProgressStart
-                    local MouseX = Mouse.X
-                    local Connection
-                    
-                    Connection = RunService.Stepped:Connect(function()
-                        if Sliding then
-                            MouseX = UserInputService:GetMouseLocation().X
-                            ProgressEnd = MouseX
-                            
-                            if MouseX < SliderInstance.Main.AbsolutePosition.X then
-                                MouseX = SliderInstance.Main.AbsolutePosition.X
-                            elseif MouseX > SliderInstance.Main.AbsolutePosition.X + SliderInstance.Main.AbsoluteSize.X then
-                                MouseX = SliderInstance.Main.AbsolutePosition.X + SliderInstance.Main.AbsoluteSize.X
-                            end
-                            
-                            if ProgressEnd < SliderInstance.Main.AbsolutePosition.X + 5 then
-                                ProgressEnd = SliderInstance.Main.AbsolutePosition.X + 5
-                            elseif ProgressEnd > SliderInstance.Main.AbsolutePosition.X + SliderInstance.Main.AbsoluteSize.X then
-                                ProgressEnd = SliderInstance.Main.AbsolutePosition.X + SliderInstance.Main.AbsoluteSize.X
-                            end
-                            
-                            if ProgressEnd <= MouseX and MouseX - ProgressStart < 0 then
-                                ProgressStart = MouseX
-                            elseif ProgressEnd >= MouseX and MouseX - ProgressStart > 0 then
-                                ProgressStart = MouseX
-                            end
-                            
-                            SliderInstance.Main.Progress.Size = UDim2.new(0, ProgressEnd - SliderInstance.Main.AbsolutePosition.X, 1, 0)
-                            
-                            local Value = SliderData.Value[1] + (MouseX - SliderInstance.Main.AbsolutePosition.X) / SliderInstance.Main.AbsoluteSize.X * (SliderData.Value[2] - SliderData.Value[1])
-                            Value = math.floor(Value / SliderData.Increment + 0.5) * SliderData.Increment * 10000000 / 10000000
-                            
-                            if not SliderData.Suffix then
-                                SliderInstance.Main.Information.Text = tostring(Value)
-                            else
-                                SliderInstance.Main.Information.Text = tostring(Value) .. " " .. SliderData.Suffix
-                            end
-                            
-                            if CurrentValue ~= Value then
-                                if Flag then
-                                    Configuration.Sliders[Flag] = Value
-                                    SaveConfiguration()
-                                end
-                                
-                                local Success, Error = pcall(function()
-                                    SliderData.Callback(Value)
-                                end)
-                                CurrentValue = Value
-                            end
-                        else
-                            SliderInstance.Main.Progress.Size = UDim2.new(0, MouseX - SliderInstance.Main.AbsolutePosition.X > 5 and MouseX - SliderInstance.Main.AbsolutePosition.X or 5, 1, 0)
-                            Connection:Disconnect()
-                        end
-                    end)
-                end)
-                
-                function SliderData:Set(Value)
-                    SliderInstance.Main.Progress.Size = UDim2.new(0, SliderInstance.Main.AbsoluteSize.X * (Value + SliderData.Value[1]) / (SliderData.Value[2] - SliderData.Value[1]) > 5 and SliderInstance.Main.AbsoluteSize.X * Value / (SliderData.Value[2] - SliderData.Value[1]) or 5, 1, 0)
-                    SliderInstance.Main.Information.Text = tostring(Value) .. " " .. SliderData.Suffix
-                    local Success, Error = pcall(function()
-                        SliderData.Callback(Value)
-                    end)
-                    CurrentValue = Value
-                    if Flag then
-                        Configuration.Sliders[Flag] = CurrentValue
-                        SaveConfiguration()
-                    end
-                end
-                
-                return SliderData
-            end
-
-            function SectionFunctions:CreateDropdown(DropdownData)
-                local DropdownInstance = TabContainer.Template.Dropdown:Clone()
-                local Flag = DropdownData.Flag
-                local CurrentOption = Flag and Configuration.Dropdowns[Flag] or DropdownData.CurrentOption
-
-                if Flag then
-                    task.spawn(function()
-                        local Success, Error = pcall(function()
-                            DropdownData.Callback(DropdownData.MultipleOptions == false and CurrentOption[1] or CurrentOption)
-                        end)    
-                    end)
-                end
-
-                if string.find(DropdownData.Name, "closed") then
-                    DropdownInstance.Name = "Dropdown"
-                else
-                    DropdownInstance.Name = DropdownData.Name
-                end
-                
-                DropdownInstance.Title.Text = DropdownData.Name
-                DropdownInstance.Visible = true
-                DropdownInstance.Parent = SectionInstance
-                DropdownInstance.Size = UDim2.new(1, 0, 0, 45)
-                DropdownInstance.Interact.Size = UDim2.new(0, 429, 0, 45)
-                DropdownInstance.Interact.Position = UDim2.new(0, 214, 0, 22)
-                DropdownInstance.List.Visible = false
-                
-                if typeof(CurrentOption) == "string" then
-                    CurrentOption = { CurrentOption }
-                end
-                
-                if not DropdownData.MultipleOptions then
-                    CurrentOption = { CurrentOption[1] }
-                end
-                
-                if DropdownData.MultipleOptions then
-                    if #CurrentOption == 1 then
-                        DropdownInstance.Selected.Text = CurrentOption[1]
-                    elseif #CurrentOption == 0 then
-                        DropdownInstance.Selected.Text = "None"
-                    else
-                        DropdownInstance.Selected.Text = #CurrentOption .. " item" .. (#CurrentOption > 1 and "s" or "")
-                    end
-                else
-                    DropdownInstance.Selected.Text = CurrentOption[1]
-                end
-
-                DropdownInstance.BackgroundTransparency = 1
-                DropdownInstance.UIStroke.Transparency = 1
-                DropdownInstance.Title.TextTransparency = 1
-                DropdownInstance.Size = UDim2.new(1, 0, 0, 45)
-                UpdateSize()
-                
-                TweenService:Create(DropdownInstance, TweenInfo.new(0.7, Enum.EasingStyle.Quint), {
-                    BackgroundTransparency = 0.75
-                }):Play()
-                TweenService:Create(DropdownInstance.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quint), {
-                    Transparency = 0
-                }):Play()
-                TweenService:Create(DropdownInstance.Title, TweenInfo.new(0.7, Enum.EasingStyle.Quint), {
-                    TextTransparency = 0
-                }):Play()
-                
-                for _, Child in next, DropdownInstance.List:GetChildren() do
-                    if Child.ClassName == "Frame" and Child.Name ~= "Placeholder" then
-                        Child:Destroy()
-                    end
-                end
-                
-                DropdownInstance.Toggle.Rotation = 180
-                local Debounce = false
-                
-                DropdownInstance.Interact.MouseButton1Click:Connect(function()
-                    TweenService:Create(DropdownInstance.UIStroke, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {
-                        Transparency = 1
-                    }):Play()
-                    task.wait(0.1)
-                    TweenService:Create(DropdownInstance.UIStroke, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {
-                        Transparency = 0
-                    }):Play()
-                    
-                    if Debounce then
-                        return
-                    end
-                    
-                    if DropdownInstance.List.Visible then
-                        Debounce = true
-                        local Tween = TweenService:Create(DropdownInstance, TweenInfo.new(0.5, Enum.EasingStyle.Quint), {
-                            Size = UDim2.new(1, 0, 0, 45)
-                        })
-                        
-                        local Success = pcall(function()
-                            Tween:Play()
-                        end)
-                        
-                        local Updating = false
-                        if Success then
-                            Updating = true
-                        end
-                        
-                        task.spawn(function()
-                            while Updating do
-                                UpdateSize()
-                                task.wait()
-                            end
-                        end)
-                        
-                        Tween.Completed:Connect(function()
-                            Updating = false
-                        end)
-                        
-                        for _, Option in next, DropdownInstance.List:GetChildren() do
-                            if Option.ClassName == "Frame" and Option.Name ~= "Placeholder" and not Option:IsA("TextLabel") then
-                                TweenService:Create(Option, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
-                                    BackgroundTransparency = 1
-                                }):Play()
-                                TweenService:Create(Option.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
-                                    Transparency = 1
-                                }):Play()
-                                TweenService:Create(Option.Title, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
-                                    TextTransparency = 1
-                                }):Play()
-                            end
-                        end
-                        
-                        TweenService:Create(DropdownInstance.List, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
-                            ScrollBarImageTransparency = 1
-                        }):Play()
-                        TweenService:Create(DropdownInstance.Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quint), {
-                            Rotation = 180
-                        }):Play()
-                        
-                        task.wait(0.35)
-                        DropdownInstance.List.Visible = false
-                        Debounce = false
-                    else
-                        local Tween = TweenService:Create(DropdownInstance, TweenInfo.new(0.5, Enum.EasingStyle.Quint), {
-                            Size = UDim2.new(1, 0, 0, 180)
-                        })
-                        
-                        local Success = pcall(function()
-                            Tween:Play()
-                        end)
-                        
-                        local Updating = false
-                        if Success then
-                            Updating = true
-                        end
-                        
-                        task.spawn(function()
-                            while Updating do
-                                UpdateSize()
-                                task.wait()
-                            end
-                        end)
-                        
-                        Tween.Completed:Connect(function()
-                            Updating = false
-                        end)
-                        
-                        DropdownInstance.List.Visible = true
-                        TweenService:Create(DropdownInstance.List, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
-                            ScrollBarImageTransparency = 0.7
-                        }):Play()
-                        TweenService:Create(DropdownInstance.Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quint), {
-                            Rotation = 0
-                        }):Play()
-                        
-                        for _, Option in next, DropdownInstance.List:GetChildren() do
-                            if Option.ClassName == "Frame" and Option.Name ~= "Placeholder" and not Option:IsA("TextLabel") then
-                                TweenService:Create(Option, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
-                                    BackgroundTransparency = 0
-                                }):Play()
-                                TweenService:Create(Option.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
-                                    Transparency = 0
-                                }):Play()
-                                TweenService:Create(Option.Title, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
-                                    TextTransparency = 0
-                                }):Play()
-                            end
-                        end
-                    end
-                end)
-                
-                for _, Option in next, DropdownData.Options do
-                    local OptionInstance = TabContainer.Template.Dropdown.List.Template:Clone()
-                    OptionInstance.Name = Option
-                    OptionInstance.Title.Text = Option
-                    OptionInstance.Parent = DropdownInstance.List
-                    OptionInstance.Visible = true
-
-                    if CurrentOption == Option then
-                        OptionInstance.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-                    end
-                    
-                    OptionInstance.MouseEnter:Connect(function()
-                        TweenService:Create(OptionInstance, Nazuro.Theme.Dark.TweenInfo, {
-                            BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-                        }):Play()
-                        TweenService:Create(OptionInstance, Nazuro.Theme.Dark.TweenInfo, {
-                            Size = UDim2.new(0.921, 0, 0, 38)
-                        }):Play()
-                    end)
-                    
-                    OptionInstance.MouseLeave:Connect(function()
-                        TweenService:Create(OptionInstance, Nazuro.Theme.Dark.TweenInfo, {
-                            BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-                        }):Play()
-                        TweenService:Create(OptionInstance, Nazuro.Theme.Dark.TweenInfo, {
-                            Size = UDim2.new(0.921, 0, 0, 38)
-                        }):Play()
-                    end)
-                    
-                    OptionInstance.Interact.ZIndex = 50
-                    OptionInstance.Interact.MouseButton1Click:Connect(function()
-                        if not DropdownData.MultipleOptions and table.find(CurrentOption, Option) then
-                            return
-                        end
-                        
-                        if table.find(CurrentOption, Option) then
-                            table.remove(CurrentOption, table.find(CurrentOption, Option))
-                            if DropdownData.MultipleOptions then
-                                if #CurrentOption == 1 then
-                                    DropdownInstance.Selected.Text = CurrentOption[1]
-                                elseif #CurrentOption == 0 then
-                                    DropdownInstance.Selected.Text = "None"
-                                else
-                                    DropdownInstance.Selected.Text = #CurrentOption .. " item" .. (#CurrentOption > 1 and "s" or "")
-                                end
-                            else
-                                DropdownInstance.Selected.Text = CurrentOption[1]
-                            end
-                        else
-                            if not DropdownData.MultipleOptions then
-                                table.clear(CurrentOption)
-                            end
-                            table.insert(CurrentOption, Option)
-                            if DropdownData.MultipleOptions then
-                                if #CurrentOption == 1 then
-                                    DropdownInstance.Selected.Text = CurrentOption[1]
-                                elseif #CurrentOption == 0 then
-                                    DropdownInstance.Selected.Text = "None"
-                                else
-                                    DropdownInstance.Selected.Text = #CurrentOption .. " item" .. (#CurrentOption > 1 and "s" or "")
-                                end
-                            else
-                                DropdownInstance.Selected.Text = CurrentOption[1]
-                            end
-
-                            local OriginalSize = OptionInstance.Size
-                            TweenService:Create(OptionInstance, Nazuro.Theme.Dark.TweenInfo, {
-                                Size = UDim2.new(0.875, 0, 0, 38)
-                            }):Play()
-                            TweenService:Create(OptionInstance, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
-                                BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-                            }):Play()
-                            Debounce = true
-                            task.wait(0.2)
-                            TweenService:Create(OptionInstance, Nazuro.Theme.Dark.TweenInfo, {
-                                Size = OriginalSize
-                            }):Play()
-                        end
-
-                        if Flag then
-                            Configuration.Dropdowns[Flag] = DropdownData.MultipleOptions == false and CurrentOption[1] or CurrentOption
-                            SaveConfiguration()    
-                        end
-
-                        local Success, Error = pcall(function()
-                            DropdownData.Callback(DropdownData.MultipleOptions == false and CurrentOption[1] or CurrentOption)
-                        end)
-                        
-                        for _, OtherOption in next, DropdownInstance.List:GetChildren() do
-                            if OtherOption.ClassName == "Frame" and OtherOption.Name ~= "Placeholder" and not table.find(CurrentOption, OtherOption.Name) then
-                                TweenService:Create(OtherOption, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
-                                    BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-                                }):Play()
-                            end
-                        end
-                        
-                        if not DropdownData.MultipleOptions then
-                            task.wait(0.1)
-                            local Tween = TweenService:Create(DropdownInstance, TweenInfo.new(0.5, Enum.EasingStyle.Quint), {
-                                Size = UDim2.new(1, 0, 0, 45)
-                            })
-                            
-                            local Success = pcall(function()
-                                Tween:Play()
-                            end)
-                            
-                            local Updating = false
-                            if Success then
-                                Updating = true
-                            end
-                            
-                            task.spawn(function()
-                                while Updating do
-                                    UpdateSize()
-                                    task.wait()
-                                end
-                            end)
-                            
-                            Tween.Completed:Connect(function()
-                                Updating = false
-                            end)
-                            
-                            for _, Option in next, DropdownInstance.List:GetChildren() do
-                                if Option.ClassName == "Frame" and Option.Name ~= "Placeholder" then
-                                    TweenService:Create(Option, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
-                                        BackgroundTransparency = 1
-                                    }):Play()
-                                    TweenService:Create(Option.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
-                                        Transparency = 1
-                                    }):Play()
-                                    TweenService:Create(Option.Title, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
-                                        TextTransparency = 1
-                                    }):Play()
-                                end
-                            end
-                            
-                            TweenService:Create(DropdownInstance.List, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
-                                ScrollBarImageTransparency = 1
-                            }):Play()
-                            TweenService:Create(DropdownInstance.Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quint), {
-                                Rotation = 180
-                            }):Play()
-                            
-                            task.wait(0.35)
-                            DropdownInstance.List.Visible = false
-                        end
-                        Debounce = false
-                    end)
-                end
-                
-                for _, Option in next, DropdownInstance.List:GetChildren() do
-                    if Option.ClassName == "Frame" and Option.Name ~= "Placeholder" then
-                        if not table.find(CurrentOption, Option.Name) then
-                            Option.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-                        else
-                            Option.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-                        end
-                    end
-                end
-                
-                function DropdownData:Set(NewOption)
-                    CurrentOption = NewOption
-                    if typeof(CurrentOption) == "string" then
-                        CurrentOption = { CurrentOption }
-                    end
-                    
-                    if not DropdownData.MultipleOptions then
-                        CurrentOption = { CurrentOption[1] }
-                    end
-                    
-                    if DropdownData.MultipleOptions then
-                        if #CurrentOption == 1 then
-                            DropdownInstance.Selected.Text = CurrentOption[1]
-                        elseif #CurrentOption == 0 then
-                            DropdownInstance.Selected.Text = "None"
-                        else
-                            DropdownInstance.Selected.Text = #CurrentOption .. " item" .. (#CurrentOption > 1 and "s" or "")
-                        end
-                    else
-                        DropdownInstance.Selected.Text = CurrentOption[1]
-                    end
-
-                    local Success, Error = pcall(function()
-                        DropdownData.Callback(NewOption)
-                    end)
-                    
-                    for _, Option in next, DropdownInstance.List:GetChildren() do
-                        if Option.ClassName == "Frame" and Option.Name ~= "Placeholder" then
-                            if not table.find(CurrentOption, Option.Name) then
-                                Option.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-                            else
-                                Option.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-                            end
-                        end
-                    end
-
-                    if Flag then
-                        DropdownInstance.Selected.Text = CurrentOption[1]
-                        Configuration.Dropdowns[Flag] = DropdownData.MultipleOptions == false and CurrentOption[1] or CurrentOption
-                        local Success, Error = pcall(function()
-                            DropdownData.Callback(DropdownData.MultipleOptions == false and CurrentOption[1] or CurrentOption)
-                        end)
-                    end
-                end
-                
-                return DropdownData
-            end
-
-            function SectionFunctions:CreateTextbox(TextboxData)
-                local TextboxInstance = TabContainer.Template.Input:Clone()
-                TextboxInstance.Name = TextboxData.Name
-                TextboxInstance.Title.Text = TextboxData.Name
-                TextboxInstance.Visible = true
-                TextboxInstance.Parent = SectionInstance
-
-                local Flag = TextboxData.Flag
-                local CurrentValue = Flag and Configuration.Inputs[Flag]
-
-                if Flag and CurrentValue then
-                    TextboxInstance.InputFrame.InputBox.Text = CurrentValue
-                end
-
-                UpdateSize()
-                TextboxInstance.InputFrame.InputBox.PlaceholderText = TextboxData.PlaceholderText
-                TextboxInstance.InputFrame.Size = UDim2.new(0, TextboxInstance.InputFrame.InputBox.TextBounds.X + 24, 0, 30)
-                
-                TextboxInstance.InputFrame.InputBox.FocusLost:Connect(function()
-                    local Success, Error = pcall(function()
-                        TextboxData.Callback(TextboxInstance.InputFrame.InputBox.Text)
-                    end)
-
-                    local InputText = TextboxInstance.InputFrame.InputBox.Text:gsub("%s+", "")
-                    if InputText == "" then
-                        return
-                    end
-
-                    if Flag then
-                        Configuration.Inputs[Flag] = TextboxInstance.InputFrame.InputBox.Text
-                        SaveConfiguration()
-                    end
-
-                    TextboxInstance.InputFrame.Size = UDim2.new(0, TextboxInstance.InputFrame.InputBox.TextBounds.X + 24, 0, 30)
-                end)
-
-                TextboxInstance.InputFrame.InputBox:GetPropertyChangedSignal("Text"):Connect(function()
-                    TweenService:Create(TextboxInstance.InputFrame, TweenInfo.new(0.55, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                        Size = UDim2.new(0, TextboxInstance.InputFrame.InputBox.TextBounds.X + 24, 0, 30)
-                    }):Play()
-                end)
-                
-                local TextboxFunctions = {}
-                function TextboxFunctions:Set(Value)
-                    TextboxInstance.InputFrame.InputBox.Text = Value
-
-                    if Flag then
-                        Configuration.Inputs[Flag] = Value
-                        SaveConfiguration()
-                    end
-                end
-                
-                return TextboxFunctions
-            end
-
-            function SectionFunctions:CreateParagraph(ParagraphData)
-                local ParagraphFunctions = {}
-
-                local ParagraphInstance = TabContainer.Template.Paragraph:Clone()
-                ParagraphInstance.Name = ParagraphData.Title
-
-                ParagraphInstance.Paragraph.Title.RichText = true
-                ParagraphInstance.Paragraph.Content.RichText = true
-
-                ParagraphInstance.Paragraph.Title.Text = ParagraphData.Title
-                ParagraphInstance.Paragraph.Content.Text = ParagraphData.Description
-
-                ParagraphInstance.Visible = true
-                ParagraphInstance.Parent = SectionInstance
-
-                function ParagraphFunctions:ChangeText(Title, Content)
-                    ParagraphInstance.Paragraph.Title.Text = Title
-                    ParagraphInstance.Paragraph.Content.Text = Content
-                    UpdateSize()
-                end
-                
-                UpdateSize()
-                return ParagraphFunctions
-            end
-
-            function SectionFunctions:CreateLabel(LabelData)
-                local LabelInstance = TabContainer.Template.Label:Clone()
-                LabelInstance.Name = LabelData.Description
-                LabelInstance.Title.Text = LabelData.Description
-                LabelInstance.ElementIndicator.Image = LabelData.Icon or LabelInstance.ElementIndicator.Image
-                LabelInstance.Visible = true
-                LabelInstance.Parent = SectionInstance
-
-                local LabelFunctions = {}
-
-                function LabelFunctions:ChangeText(Text)
-                    LabelInstance.Title.Text = Text
-                end
-
-                UpdateSize()
-                return LabelFunctions
-            end
-
-            function SectionFunctions:CreateDivider()
-                local DividerInstance = TabContainer.Template.Divider:Clone()
-                DividerInstance.Visible = true
-                DividerInstance.Parent = SectionInstance
-                UpdateSize()
-            end
-
-            return SectionFunctions
-        end
-        
-        return TabFunctions
-    end
-    
-    return LibraryFunctions
+-- Main library creation
+function Nazuro:CreateLibrary(config, icon)
+	local library = {
+		Name = typeof(config) == "table" and config.Name or (typeof(config) == "string" and config or "Nazuro"),
+		Icon = typeof(config) == "table" and config.Icon or icon
+	}
+	local sidebar = UI.Main.SideBar
+	local buttons = sidebar.Buttons
+	local tabContainer = UI.Main.TabContainer
+
+	sidebar.NameText.Text = library.Name
+	UI.Main.Profile.Image = Profile
+	buttons.Template.Visible = false
+	Nazuro:DragFunc(sidebar, UI.Main)
+	Nazuro:DragFunc(UI.Main.Title, UI.Main)
+
+	function Nazuro:SwitchTo(tabName)
+		if tabContainer:FindFirstChild(tabName) then
+			tabContainer.UIPageLayout:JumpTo(tabContainer:FindFirstChild(tabName))
+		end
+	end
+
+	buttons.Parent.Minimize.MouseButton1Click:Connect(function()
+		if tabContainer:FindFirstChild("Settings") then
+			tabContainer.UIPageLayout:JumpTo(tabContainer:FindFirstChild("Settings"))
+		end
+	end)
+
+	UI.Enabled = true
+
+	local lib = {}
+	function lib:Notify(title, content, duration, actions)
+		Nazuro:Notify(title, {
+			Title = typeof(title) == "table" and title.Title or title,
+			Content = typeof(title) == "table" and title.Content or content,
+			Duration = typeof(title) == "table" and title.Duration or duration or DEFAULT_DURATION,
+			Actions = typeof(title) == "table" and title.Actions or actions
+		})
+	end
+
+	function lib:CreateTab(tabConfig, icon)
+		if not tabConfig then return end
+		local tab
+		local tabButton
+
+		if tabConfig ~= "Settings" then
+			tabButton = buttons.Template:Clone()
+			tabButton.ImageLabel.Image = typeof(tabConfig) == "table" and tabConfig.Icon or icon or "rbxassetid://11432859220"
+			tabButton.ImageLabel.BackgroundTransparency = 1
+			tabButton.BackgroundTransparency = 1
+			tabButton.TextLabel.Text = typeof(tabConfig) == "table" and tabConfig.Title or tabConfig or "Unknown"
+			tabButton.Visible = true
+			tabButton.Parent = buttons
+
+			tab = tabContainer.Template:Clone()
+			tabContainer.Template.Visible = false
+			tab.Parent = tabContainer
+			tab.Name = typeof(tabConfig) == "table" and tabConfig.Title or tabConfig or "Unknown"
+			tab.Visible = true
+			tab.LayoutOrder = #tabContainer:GetChildren()
+
+			for _, child in pairs(tab:GetChildren()) do
+				if child.ClassName == "Frame" then
+					child:Destroy()
+				end
+			end
+
+			tabButton.MouseButton1Click:Connect(function()
+				if tabContainer.UIPageLayout.CurrentPage ~= tab then
+					tabContainer.UIPageLayout:JumpTo(tab)
+				end
+			end)
+		else
+			tab = tabContainer.Template:Clone()
+			tabContainer.Template.Visible = false
+			tab.Parent = tabContainer
+			tab.Name = typeof(tabConfig) == "table" and tabConfig.Title or tabConfig or "Unknown"
+			tab.Visible = true
+			tab.LayoutOrder = #tabContainer:GetChildren()
+
+			for _, child in pairs(tab:GetChildren()) do
+				if child.ClassName == "Frame" then
+					child:Destroy()
+				end
+			end
+		end
+
+		if tabConfig == "Main" then
+			tabContainer.UIPageLayout:JumpTo(tab)
+		end
+
+		local tabObj = {}
+		function tabObj:CreateSection(name, type)
+			local sectionObj = {}
+			local section
+
+			if type == "Normal" then
+				section = tabContainer.Template.SectionTitle:Clone()
+				section.Name = name
+				section.Title.Text = name
+				section.Visible = true
+				section.Parent = tab
+			elseif type == "Foldable" then
+				section = tabContainer.Template.FoldableSectionTitle:Clone()
+				section.Name = name
+				section.Title.Text = name
+				section.Visible = true
+				section.Parent = tab
+			end
+
+			section.Title.TextTransparency = 1
+			TweenService:Create(section.Title, TweenInfo.new(0.7, Enum.EasingStyle.Quint), { TextTransparency = 0 }):Play()
+
+			local function updateSize()
+				local contentSize = section.UIListLayout.AbsoluteContentSize
+				local scale = section:FindFirstChild("UIScale") and section:FindFirstChild("UIScale").Scale or 1
+				section.Size = UDim2.new(1, 0, 0, contentSize.Y * scale)
+			end
+
+			if type == "Foldable" then
+				local isOpen = true
+				section.Title.TextButton.MouseButton1Click:Connect(function()
+					isOpen = not isOpen
+					for _, child in pairs(section:GetChildren()) do
+						if child.Name ~= "UIListLayout" and child.Name ~= "UIPadding" and not child:IsA("TextLabel") then
+							child.Visible = isOpen
+						end
+					end
+					updateSize()
+				end)
+			end
+
+			function sectionObj:SetName(newName)
+				section.Title.Text = newName
+			end
+
+			function sectionObj:Remove()
+				if section then
+					section:Destroy()
+					section = nil
+				end
+			end
+
+			function sectionObj:CreateButton(config)
+				local buttonObj = { Func = config.Callback }
+				local button = tabContainer.Template.Button:Clone()
+				button.Name = config.Name or "Undefined"
+				button.Title.Text = config.Name or "Undefined"
+				button.Icon.Image = config.Icon or "rbxassetid://3944703587"
+				button.Visible = true
+				button.Parent = section
+				updateSize()
+
+				button.Interact.MouseButton1Click:Connect(function()
+					local success, err = pcall(buttonObj.Func)
+					if not success then
+						local originalSize = button.Size
+						TweenService:Create(button, Nazuro.Theme.Dark.TweenInfo, { Size = UDim2.new(0.992, -10, 0, 35) }):Play()
+						TweenService:Create(button, Nazuro.Theme.Dark.TweenInfo, { BackgroundColor3 = Color3.fromRGB(103, 0, 0) }):Play()
+						button.Title.Text = "Something failed on our end"
+						warn("[Nazuro]: An error occurred: " .. tostring(err))
+						task.wait(0.5)
+						button.Title.Text = config.Name
+						TweenService:Create(button, Nazuro.Theme.Dark.TweenInfo, { Size = originalSize }):Play()
+						TweenService:Create(button, Nazuro.Theme.Dark.TweenInfo, { BackgroundColor3 = Nazuro.Theme.Dark.SecondaryColor }):Play()
+					else
+						local originalSize = button.Size
+						TweenService:Create(button, Nazuro.Theme.Dark.TweenInfo, { Size = UDim2.new(0.992, -10, 0, 35) }):Play()
+						task.wait(0.2)
+						TweenService:Create(button, Nazuro.Theme.Dark.TweenInfo, { Size = originalSize }):Play()
+					end
+				end)
+
+				function buttonObj:SetCallback(newCallback)
+					buttonObj.Func = newCallback
+				end
+
+				function buttonObj:Remove()
+					button:Destroy()
+					updateSize()
+				end
+
+				function buttonObj:SetName(newName)
+					button.Title.Text = newName
+					button.Name = newName
+				end
+
+				return buttonObj
+			end
+
+			function sectionObj:CreateToggle(type, config)
+				local toggleObj = {}
+				local toggle = (type == "Radio" and tabContainer.Template.Toggle_Radio or tabContainer.Template.Toggle):Clone()
+				local interact = toggle.Interact
+				local switch = toggle.Switch
+				local indicator = switch.Indicator
+				local flag = config.Flag
+				local value = flag and Configuration.Toggles[flag] or config.CurrentValue
+
+				if flag and not Configuration.Toggles[flag] then
+					Configuration.Toggles[flag] = config.CurrentValue
+					SaveConfiguration()
+				end
+
+				local function setToggle(newValue)
+					if flag then
+						Configuration.Toggles[flag] = newValue
+						SaveConfiguration()
+					end
+					value = newValue
+
+					if type == "Radio" then
+						TweenService:Create(indicator, Nazuro.Theme.Dark.TweenInfo, { BackgroundTransparency = newValue and 0 or 1 }):Play()
+					else
+						TweenService:Create(indicator, Nazuro.Theme.Dark.TweenInfo, { BackgroundColor3 = newValue and Nazuro.Theme.Dark.ToggleEnabled or Nazuro.Theme.Dark.ToggleDisabled }):Play()
+						TweenService:Create(indicator, Nazuro.Theme.Dark.TweenInfo, { Position = newValue and UDim2.new(0.537, 0, 0.5, 0) or UDim2.new(0.07, 0, 0.5, 0) }):Play()
+					end
+
+					local success, err = pcall(function() config.Callback(newValue) end)
+					if not success then
+						TweenService:Create(toggle, Nazuro.Theme.Dark.TweenInfo, { BackgroundColor3 = Color3.fromRGB(103, 0, 0) }):Play()
+						toggle.Title.Text = "Something failed on our end"
+						warn("[Nazuro]: An error occurred: " .. tostring(err))
+						task.wait(0.5)
+						toggle.Title.Text = config.Name
+						TweenService:Create(toggle, Nazuro.Theme.Dark.TweenInfo, { BackgroundColor3 = Nazuro.Theme.Dark.SecondaryColor }):Play()
+					end
+				end
+
+				toggle.Name = config.Name
+				toggle.Title.Text = config.Name
+				toggle.Visible = true
+				toggle.Parent = section
+				if value then setToggle(value) end
+				updateSize()
+
+				interact.MouseButton1Click:Connect(function()
+					setToggle(not value)
+				end)
+
+				config.SetToggle = setToggle
+				return config
+			end
+
+			function sectionObj:CreateSlider(config)
+				local isDragging = false
+				local slider = tabContainer.Template.Slider:Clone()
+				local flag = config.Flag
+				local currentValue = flag and Configuration.Sliders[flag] or config.CurrentValue
+
+				if flag and Configuration.Sliders[flag] then
+					pcall(function() config.Callback(currentValue) end)
+				end
+
+				slider.Name = config.Name
+				slider.Title.Text = config.Name
+				slider.Visible = true
+				slider.Parent = section
+				updateSize()
+
+				slider.Main.Progress.Size = UDim2.new(0, math.max(slider.Main.AbsoluteSize.X * (currentValue - config.Value[1]) / (config.Value[2] - config.Value[1]), 5), 1, 0)
+				slider.Main.Information.Text = config.Suffix and (currentValue .. " " .. config.Suffix) or tostring(currentValue)
+
+				slider.Main.Interact.InputBegan:Connect(function(input)
+					if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+						isDragging = true
+					end
+				end)
+
+				slider.Main.Interact.InputEnded:Connect(function(input)
+					if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+						isDragging = false
+					end
+				end)
+
+				slider.Main.Interact.MouseButton1Down:Connect(function()
+					local connection
+					connection = RunService.Stepped:Connect(function()
+						if not isDragging then
+							connection:Disconnect()
+							return
+						end
+
+						local mousePos = UserInputService:GetMouseLocation().X
+						local progressPos = math.clamp(mousePos, slider.Main.AbsolutePosition.X, slider.Main.AbsolutePosition.X + slider.Main.AbsoluteSize.X)
+						local value = config.Value[1] + (progressPos - slider.Main.AbsolutePosition.X) / slider.Main.AbsoluteSize.X * (config.Value[2] - config.Value[1])
+						value = math.floor(value / config.Increment + 0.5) * config.Increment
+
+						slider.Main.Progress.Size = UDim2.new(0, math.max(progressPos - slider.Main.AbsolutePosition.X, 5), 1, 0)
+						slider.Main.Information.Text = config.Suffix and (value .. " " .. config.Suffix) or tostring(value)
+
+						if currentValue ~= value then
+							if flag then
+								Configuration.Sliders[flag] = value
+								SaveConfiguration()
+							end
+							local success, err = pcall(function() config.Callback(value) end)
+							currentValue = value
+						end
+					end)
+				end)
+
+				function config:Set(value)
+					slider.Main.Progress.Size = UDim2.new(0, math.max(slider.Main.AbsoluteSize.X * (value - config.Value[1]) / (config.Value[2] - config.Value[1]), 5), 1, 0)
+					slider.Main.Information.Text = config.Suffix and (value .. " " .. config.Suffix) or tostring(value)
+					local success, err = pcall(function() config.Callback(value) end)
+					currentValue = value
+					if flag then
+						Configuration.Sliders[flag] = value
+						SaveConfiguration()
+					end
+				end
+
+				return config
+			end
+
+			function sectionObj:CreateDropdown(config)
+				local dropdown = tabContainer.Template.Dropdown:Clone()
+				local flag = config.Flag
+				local currentOption = flag and Configuration.Dropdowns[flag] or config.CurrentOption
+				local debounce = false
+
+				if flag then
+					task.spawn(function()
+						local success, err = pcall(function()
+							config.Callback(config.MultipleOptions and currentOption or currentOption[1])
+						end)
+					end)
+				end
+
+				dropdown.Name = config.Name
+				dropdown.Title.Text = config.Name
+				dropdown.Visible = true
+				dropdown.Parent = section
+				dropdown.Size = UDim2.new(1, 0, 0, 45)
+				dropdown.Interact.Size = UDim2.new(0, 429, 0, 45)
+				dropdown.Interact.Position = UDim2.new(0, 214, 0, 22)
+				dropdown.List.Visible = false
+
+				if typeof(currentOption) == "string" then
+					currentOption = { currentOption }
+				end
+				if not config.MultipleOptions then
+					currentOption = { currentOption[1] }
+				end
+
+				dropdown.Selected.Text = config.MultipleOptions and (#currentOption == 1 and currentOption[1] or #currentOption == 0 and "None" or #currentOption .. " item" .. (#currentOption > 1 and "s" or "")) or currentOption[1]
+
+				TweenService:Create(dropdown, TweenInfo.new(0.7, Enum.EasingStyle.Quint), { BackgroundTransparency = 0.75 }):Play()
+				TweenService:Create(dropdown.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quint), { Transparency = 0 }):Play()
+				TweenService:Create(dropdown.Title, TweenInfo.new(0.7, Enum.EasingStyle.Quint), { TextTransparency = 0 }):Play()
+
+				for _, child in pairs(dropdown.List:GetChildren()) do
+					if child.ClassName == "Frame" and child.Name ~= "Placeholder" then
+						child:Destroy()
+					end
+				end
+
+				dropdown.Toggle.Rotation = 180
+				dropdown.Interact.MouseButton1Click:Connect(function()
+					if debounce then return end
+					debounce = true
+
+					if dropdown.List.Visible then
+						local tween = TweenService:Create(dropdown, TweenInfo.new(0.5, Enum.EasingStyle.Quint), { Size = UDim2.new(1, 0, 0, 45) })
+						tween:Play()
+						tween.Completed:Connect(function()
+							dropdown.List.Visible = false
+							debounce = false
+						end)
+
+						for _, child in pairs(dropdown.List:GetChildren()) do
+							if child.ClassName == "Frame" and child.Name ~= "Placeholder" then
+								TweenService:Create(child, TweenInfo.new(0.3, Enum.EasingStyle.Quint), { BackgroundTransparency = 1 }):Play()
+								TweenService:Create(child.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quint), { Transparency = 1 }):Play()
+								TweenService:Create(child.Title, TweenInfo.new(0.3, Enum.EasingStyle.Quint), { TextTransparency = 1 }):Play()
+							end
+						end
+						TweenService:Create(dropdown.List, TweenInfo.new(0.3, Enum.EasingStyle.Quint), { ScrollBarImageTransparency = 1 }):Play()
+						TweenService:Create(dropdown.Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quint), { Rotation = 180 }):Play()
+					else
+						local tween = TweenService:Create(dropdown, TweenInfo.new(0.5, Enum.EasingStyle.Quint), { Size = UDim2.new(1, 0, 0, 180) })
+						tween:Play()
+						dropdown.List.Visible = true
+						TweenService:Create(dropdown.List, TweenInfo.new(0.3, Enum.EasingStyle.Quint), { ScrollBarImageTransparency = 0.7 }):Play()
+						TweenService:Create(dropdown.Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quint), { Rotation = 0 }):Play()
+
+						for _, child in pairs(dropdown.List:GetChildren()) do
+							if child.ClassName == "Frame" and child.Name ~= "Placeholder" then
+								TweenService:Create(child, TweenInfo.new(0.3, Enum.EasingStyle.Quint), { BackgroundTransparency = 0 }):Play()
+								TweenService:Create(child.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quint), { Transparency = 0 }):Play()
+								TweenService:Create(child.Title, TweenInfo.new(0.3, Enum.EasingStyle.Quint), { TextTransparency = 0 }):Play()
+							end
+						end
+						tween.Completed:Connect(function() debounce = false end)
+					end
+					updateSize()
+				end)
+
+				for _, option in pairs(config.Options) do
+					local optionFrame = tabContainer.Template.Dropdown.List.Template:Clone()
+					optionFrame.Name = option
+					optionFrame.Title.Text = option
+					optionFrame.Parent = dropdown.List
+					optionFrame.Visible = true
+
+					if table.find(currentOption, option) then
+						optionFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+					end
+
+					optionFrame.MouseEnter:Connect(function()
+						TweenService:Create(optionFrame, Nazuro.Theme.Dark.TweenInfo, { BackgroundColor3 = Color3.fromRGB(40, 40, 40) }):Play()
+						TweenService:Create(optionFrame, Nazuro.Theme.Dark.TweenInfo, { Size = UDim2.new(0.921, 0, 0, 38) }):Play()
+					end)
+
+					optionFrame.MouseLeave:Connect(function()
+						TweenService:Create(optionFrame, Nazuro.Theme.Dark.TweenInfo, { BackgroundColor3 = Color3.fromRGB(30, 30, 30) }):Play()
+						TweenService:Create(optionFrame, Nazuro.Theme.Dark.TweenInfo, { Size = UDim2.new(0.921, 0, 0, 38) }):Play()
+					end)
+
+					optionFrame.Interact.MouseButton1Click:Connect(function()
+						if not config.MultipleOptions and table.find(currentOption, option) then return end
+
+						if table.find(currentOption, option) then
+							table.remove(currentOption, table.find(currentOption, option))
+						else
+							if not config.MultipleOptions then table.clear(currentOption) end
+							table.insert(currentOption, option)
+						end
+
+						dropdown.Selected.Text = config.MultipleOptions and (#currentOption == 1 and currentOption[1] or #currentOption == 0 and "None" or #currentOption .. " item" .. (#currentOption > 1 and "s" or "")) or currentOption[1]
+
+						if flag then
+							Configuration.Dropdowns[flag] = config.MultipleOptions and currentOption or currentOption[1]
+							SaveConfiguration()
+						end
+
+						local success, err = pcall(function() config.Callback(config.MultipleOptions and currentOption or currentOption[1]) end)
+
+						for _, child in pairs(dropdown.List:GetChildren()) do
+							if child.ClassName == "Frame" and child.Name ~= "Placeholder" then
+								child.BackgroundColor3 = table.find(currentOption, child.Name) and Color3.fromRGB(40, 40, 40) or Color3.fromRGB(30, 30, 30)
+							end
+						end
+
+						if not config.MultipleOptions then
+							debounce = true
+							local tween = TweenService:Create(dropdown, TweenInfo.new(0.5, Enum.EasingStyle.Quint), { Size = UDim2.new(1, 0, 0, 45) })
+							tween:Play()
+							for _, child in pairs(dropdown.List:GetChildren()) do
+								if child.ClassName == "Frame" and child.Name ~= "Placeholder" then
+									TweenService:Create(child, TweenInfo.new(0.3, Enum.EasingStyle.Quint), { BackgroundTransparency = 1 }):Play()
+									TweenService:Create(child.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quint), { Transparency = 1 }):Play()
+									TweenService:Create(child.Title, TweenInfo.new(0.3, Enum.EasingStyle.Quint), { TextTransparency = 1 }):Play()
+								end
+							end
+							TweenService:Create(dropdown.List, TweenInfo.new(0.3, Enum.EasingStyle.Quint), { ScrollBarImageTransparency = 1 }):Play()
+							TweenService:Create(dropdown.Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quint), { Rotation = 180 }):Play()
+							tween.Completed:Connect(function()
+								dropdown.List.Visible = false
+								debounce = false
+							end)
+						end
+					end)
+				end
+
+				function config:Set(newOption)
+					currentOption = newOption
+					if typeof(currentOption) == "string" then
+						currentOption = { currentOption }
+					end
+					if not config.MultipleOptions then
+						currentOption = { currentOption[1] }
+					end
+
+					dropdown.Selected.Text = config.MultipleOptions and (#currentOption == 1 and currentOption[1] or #currentOption == 0 and "None" or #currentOption .. " item" .. (#currentOption > 1 and "s" or "")) or currentOption[1]
+
+					local success, err = pcall(function() config.Callback(config.MultipleOptions and currentOption or currentOption[1]) end)
+
+					for _, child in pairs(dropdown.List:GetChildren()) do
+						if child.ClassName == "Frame" and child.Name ~= "Placeholder" then
+							child.BackgroundColor3 = table.find(currentOption, child.Name) and Color3.fromRGB(40, 40, 40) or Color3.fromRGB(30, 30, 30)
+						end
+					end
+
+					if flag then
+						Configuration.Dropdowns[flag] = config.MultipleOptions and currentOption or currentOption[1]
+						SaveConfiguration()
+					end
+				end
+
+				return config
+			end
+
+			function sectionObj:CreateTextbox(config)
+				local textbox = tabContainer.Template.Input:Clone()
+				textbox.Name = config.Name
+				textbox.Title.Text = config.Name
+				textbox.Visible = true
+				textbox.Parent = section
+				local flag = config.Flag
+				local currentValue = flag and Configuration.Inputs[flag]
+
+				if flag and currentValue then
+					textbox.InputFrame.InputBox.Text = currentValue
+				end
+
+				updateSize()
+				textbox.InputFrame.InputBox.PlaceholderText = config.PlaceholderText
+				textbox.InputFrame.Size = UDim2.new(0, textbox.InputFrame.InputBox.TextBounds.X + 24, 0, 30)
+
+				textbox.InputFrame.InputBox.FocusLost:Connect(function()
+					local inputText = textbox.InputFrame.InputBox.Text:gsub("%s+", "")
+					if inputText == "" then return end
+
+					local success, err = pcall(function() config.Callback(textbox.InputFrame.InputBox.Text) end)
+
+					if flag then
+						Configuration.Inputs[flag] = textbox.InputFrame.InputBox.Text
+						SaveConfiguration()
+					end
+
+					textbox.InputFrame.Size = UDim2.new(0, textbox.InputFrame.InputBox.TextBounds.X + 24, 0, 30)
+				end)
+
+				textbox.InputFrame.InputBox:GetPropertyChangedSignal("Text"):Connect(function()
+					TweenService:Create(textbox.InputFrame, TweenInfo.new(0.55, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+						Size = UDim2.new(0, textbox.InputFrame.InputBox.TextBounds.X + 24, 0, 30)
+					}):Play()
+				end)
+
+				function config:Set(newText)
+					textbox.InputFrame.InputBox.Text = newText
+					if flag then
+						Configuration.Inputs[flag] = newText
+						SaveConfiguration()
+					end
+				end
+
+				return config
+			end
+
+			return sectionObj
+		end
+
+		return tabObj
+	end
+
+	if IsOnMobile and not IsOnEmulator then
+		Nazuro:CreateMobileButton()
+	end
+
+	return lib
 end
 
 return Nazuro
