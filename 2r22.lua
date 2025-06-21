@@ -1,4 +1,7 @@
 
+--!native
+--!optimize 2
+
 local game = game
 local GetService = game.GetService
 
@@ -290,41 +293,18 @@ function e:CreateLibrary(G, H)
 	e:DragFunc(J, w.Main)
 	e:DragFunc(w.Main.Title, w.Main)
 
+	function e:SwitchTo(Tab)
+		if L:FindFirstChild(Tab) then
+			L.UIPageLayout:JumpTo(L:FindFirstChild(Tab))
+		end
+	end
 
+	K.Parent.Minimize.MouseButton1Click:Connect(function()
+		if L:FindFirstChild("Settings") then
+			L.UIPageLayout:JumpTo(L:FindFirstChild("Settings"))
+		end
+	end)
 
-
--- ... (previous code remains the same until the SwitchTo function)
-
-function e:SwitchTo(Tab)
-    if L:FindFirstChild(Tab) then
-        -- Reset all tabs to default appearance first
-        for _, button in next, K:GetChildren() do
-            if button:IsA("Frame") and button.Name ~= "Template" then
-                q:Create(button, e.Theme.Dark.TweenInfo, {
-                    Position = UDim2.new(0, 0, 0, 0)
-                }):Play()
-                q:Create(button.UIStroke, e.Theme.Dark.TweenInfo, {
-                    Transparency = 1
-                }):Play()
-            end
-        end
-        
-        -- Apply pushed out effect to the selected tab
-        local selectedButton = K:FindFirstChild(Tab)
-        if selectedButton then
-            q:Create(selectedButton, e.Theme.Dark.TweenInfo, {
-                Position = UDim2.new(0, 5, 0, 0) -- Push out by 5 pixels
-            }):Play()
-            q:Create(selectedButton.UIStroke, e.Theme.Dark.TweenInfo, {
-                Transparency = 0 -- Make the line visible
-            }):Play()
-        end
-        
-        L.UIPageLayout:JumpTo(L:FindFirstChild(Tab))
-    end
-end
-
--- ... (rest of the code remains the same)
 	w.Enabled = true
 
 
@@ -382,57 +362,157 @@ end
 			MobileButton.Visible = true
 		end
 	end)
-	function M:CreateTab(S, H)
-		if not S then
-			return
-		end
 
 
-		local U
 
-		if S ~= "Settings" then
-			local T = K.Template:Clone()
-			T.ImageLabel.Image = typeof(S) == "table" and S.Icon or H or "rbxassetid://11432859220"
-			T.ImageLabel.BackgroundTransparency = 1
-			T.BackgroundTransparency = 1
-			T.TextLabel.Text = typeof(S) == "table" and S.Title or S or "Unknown"
-			T.Visible = true
-			T.Parent = K
-			U = L.Template:Clone()
-			L.Template.Visible = false
-			U.Parent = L
-			U.Name = typeof(S) == "table" and S.Title or S or "Unknown"
-			U.Visible = true
-			U.LayoutOrder = #L:GetChildren()
-			for B, V in next, (U:GetChildren()) do
-				if V.ClassName == "Frame" then
-					V:Destroy()
-				end
-			end
-			T.MouseButton1Click:Connect(function()
-				if L.UIPageLayout.CurrentPage ~= U then
-					L.UIPageLayout:JumpTo(U)
-				end
-			end)
-		else
-			U = L.Template:Clone()
-			L.Template.Visible = false
-			U.Parent = L
-			U.Name = typeof(S) == "table" and S.Title or S or "Unknown"
-			U.Visible = true
-			U.LayoutOrder = #L:GetChildren()
-			for B, V in next, (U:GetChildren()) do
-				if V.ClassName == "Frame" then
-					V:Destroy()
-				end
-			end
-		end
 
-		if S == "Main" then
-			L.UIPageLayout:JumpTo(U)
-		end
 
-		local X = {}
+-- Inside the UI library code, look for the part where tabs are created (around the CreateTab function)
+-- Modify the tab creation and selection logic to include the visual effects you want
+
+function M:CreateTab(S, H)
+    if not S then
+        return
+    end
+
+    local U
+    local TabButton
+    local TabHighlight -- This will be the line behind the selected tab
+
+    if S ~= "Settings" then
+        local T = K.Template:Clone()
+        T.ImageLabel.Image = typeof(S) == "table" and S.Icon or H or "rbxassetid://11432859220"
+        T.ImageLabel.BackgroundTransparency = 1
+        T.BackgroundTransparency = 1
+        T.TextLabel.Text = typeof(S) == "table" and S.Title or S or "Unknown"
+        T.Visible = true
+        T.Parent = K
+        
+        -- Create the highlight line for this tab
+        TabHighlight = Instance.new("Frame")
+        TabHighlight.Name = "Highlight"
+        TabHighlight.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        TabHighlight.BorderSizePixel = 0
+        TabHighlight.Size = UDim2.new(0.7, 0, 0, 2)
+        TabHighlight.Position = UDim2.new(0.15, 0, 1, -2)
+        TabHighlight.AnchorPoint = Vector2.new(0, 1)
+        TabHighlight.Visible = false
+        TabHighlight.Parent = T
+        
+        U = L.Template:Clone()
+        L.Template.Visible = false
+        U.Parent = L
+        U.Name = typeof(S) == "table" and S.Title or S or "Unknown"
+        U.Visible = true
+        U.LayoutOrder = #L:GetChildren()
+        
+        for B, V in next, (U:GetChildren()) do
+            if V.ClassName == "Frame" then
+                V:Destroy()
+            end
+        end
+        
+        TabButton = T
+        
+        T.MouseButton1Click:Connect(function()
+            if L.UIPageLayout.CurrentPage ~= U then
+                -- Reset all tabs to normal state
+                for _, tab in ipairs(K:GetChildren()) do
+                    if tab:IsA("Frame") and tab.Name ~= "Template" then
+                        -- Make other tabs transparent and pushed back
+                        q:Create(tab, e.Theme.Dark.TweenInfo, {
+                            BackgroundTransparency = 0.85,
+                            Position = UDim2.new(0, 0, 0, 0)
+                        }):Play()
+                        q:Create(tab.TextLabel, e.Theme.Dark.TweenInfo, {
+                            TextTransparency = 0.5
+                        }):Play()
+                        q:Create(tab.ImageLabel, e.Theme.Dark.TweenInfo, {
+                            ImageTransparency = 0.5
+                        }):Play()
+                        
+                        -- Hide highlight for other tabs
+                        if tab:FindFirstChild("Highlight") then
+                            tab.Highlight.Visible = false
+                        end
+                    end
+                end
+                
+                -- Make current tab stand out
+                q:Create(T, e.Theme.Dark.TweenInfo, {
+                    BackgroundTransparency = 0.7,
+                    Position = UDim2.new(0, 0, 0, 5) -- Pushed out effect
+                }):Play()
+                q:Create(T.TextLabel, e.Theme.Dark.TweenInfo, {
+                    TextTransparency = 0
+                }):Play()
+                q:Create(T.ImageLabel, e.Theme.Dark.TweenInfo, {
+                    ImageTransparency = 0
+                }):Play()
+                
+                -- Show highlight for current tab
+                TabHighlight.Visible = true
+                
+                L.UIPageLayout:JumpTo(U)
+            end
+        end)
+    else
+        U = L.Template:Clone()
+        L.Template.Visible = false
+        U.Parent = L
+        U.Name = typeof(S) == "table" and S.Title or S or "Unknown"
+        U.Visible = true
+        U.LayoutOrder = #L:GetChildren()
+        for B, V in next, (U:GetChildren()) do
+            if V.ClassName == "Frame" then
+                V:Destroy()
+            end
+        end
+    end
+
+    -- Initialize all tabs to transparent state except the first one
+    if S == "Main" then
+        L.UIPageLayout:JumpTo(U)
+        if TabButton then
+            q:Create(TabButton, e.Theme.Dark.TweenInfo, {
+                BackgroundTransparency = 0.7,
+                Position = UDim2.new(0, 0, 0, 5) -- Pushed out effect
+            }):Play()
+            q:Create(TabButton.TextLabel, e.Theme.Dark.TweenInfo, {
+                TextTransparency = 0
+            }):Play()
+            q:Create(TabButton.ImageLabel, e.Theme.Dark.TweenInfo, {
+                ImageTransparency = 0
+            }):Play()
+            TabHighlight.Visible = true
+        end
+    elseif TabButton then
+        q:Create(TabButton, e.Theme.Dark.TweenInfo, {
+            BackgroundTransparency = 0.85,
+            Position = UDim2.new(0, 0, 0, 0)
+        }):Play()
+        q:Create(TabButton.TextLabel, e.Theme.Dark.TweenInfo, {
+            TextTransparency = 0.5
+        }):Play()
+        q:Create(TabButton.ImageLabel, e.Theme.Dark.TweenInfo, {
+            ImageTransparency = 0.5
+        }):Play()
+    end
+
+    local X = {}
+    -- ... rest of the CreateTab function remains the same ...
+
+
+
+
+
+
+
+
+
+
+
+
 		function X:CreateSection(Y, Z)
 			local _ = {}
 			local a0
