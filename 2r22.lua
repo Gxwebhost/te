@@ -75,7 +75,7 @@ local function RippleEffect(button)
         ZIndex = 10
     })
     
-    local corner = Create("UICorner", {
+    Create("UICorner", {
         CornerRadius = UDim.new(1, 0),
         Parent = ripple
     })
@@ -85,8 +85,8 @@ local function RippleEffect(button)
         BackgroundTransparency = 1
     }):Play()
     
-    spawn(function()
-        wait(0.5)
+    task.spawn(function()
+        task.wait(0.5)
         ripple:Destroy()
     end)
 end
@@ -95,14 +95,17 @@ end
 local MainUI = Create("ScreenGui", {
     Name = "NazuroUI",
     ResetOnSpawn = false,
-    ZIndexBehavior = Enum.ZIndexBehavior.Global
+    ZIndexBehavior = Enum.ZIndexBehavior.Global,
+    IgnoreGuiInset = true, -- Ensures proper positioning with Roblox's topbar
+    Parent = CoreGui
 })
 
+-- Adjusted MainFrame size to be more compact and centered
 local MainFrame = Create("Frame", {
     Name = "MainFrame",
-    Size = UDim2.new(0, 500, 0, 600),
-    Position = UDim2.new(0.5, -250, 0.5, -300), -- Centered on screen
-    AnchorPoint = Vector2.new(0.5, 0.5), -- Ensures proper centering
+    Size = UDim2.new(0, 400, 0, 450), -- Reduced size for better fit
+    Position = UDim2.new(0.5, -200, 0.5, -225), -- Centered based on new size
+    AnchorPoint = Vector2.new(0.5, 0.5),
     BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Main,
     BackgroundTransparency = Nazuro.Settings.Transparency,
     Parent = MainUI,
@@ -121,37 +124,37 @@ Create("UIStroke", {
     Parent = MainFrame
 })
 
--- Title Bar (this will be our draggable area)
+-- Title Bar
 local TitleBar = Create("Frame", {
     Name = "TitleBar",
-    Size = UDim2.new(1, 0, 0, 40),
+    Size = UDim2.new(1, 0, 0, 35), -- Slightly reduced height
     BackgroundTransparency = 1,
     Parent = MainFrame
 })
 
 local Title = Create("TextLabel", {
     Name = "Title",
-    Size = UDim2.new(0, 200, 1, 0),
-    Position = UDim2.new(0, 15, 0, 0),
+    Size = UDim2.new(0, 180, 1, 0), -- Adjusted width
+    Position = UDim2.new(0, 10, 0, 0),
     BackgroundTransparency = 1,
     Text = "Nazuro UI",
     TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text,
     TextXAlignment = Enum.TextXAlignment.Left,
     Font = Enum.Font.GothamBold,
-    TextSize = 18,
+    TextSize = 16, -- Slightly smaller text
     Parent = TitleBar
 })
 
 local CloseButton = Create("TextButton", {
     Name = "CloseButton",
-    Size = UDim2.new(0, 30, 0, 30),
-    Position = UDim2.new(1, -40, 0.5, -15),
+    Size = UDim2.new(0, 28, 0, 28), -- Slightly smaller button
+    Position = UDim2.new(1, -35, 0.5, -14),
     AnchorPoint = Vector2.new(1, 0.5),
     BackgroundTransparency = 1,
     TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text,
     Text = "×",
     Font = Enum.Font.GothamBold,
-    TextSize = 24,
+    TextSize = 22,
     Parent = TitleBar
 })
 
@@ -159,112 +162,11 @@ CloseButton.MouseButton1Click:Connect(function()
     MainUI:Destroy()
 end)
 
--- Drag functionality
-local dragging
-local dragInput
-local dragStart
-local startPos
-
-local function UpdateInput(input)
-    local delta = input.Position - dragStart
-    MainFrame.Position = UDim2.new(
-        startPos.X.Scale, 
-        startPos.X.Offset + delta.X,
-        startPos.Y.Scale, 
-        startPos.Y.Offset + delta.Y
-    )
-end
-
-TitleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = MainFrame.Position
-        
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-
-TitleBar.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        UpdateInput(input)
-    end
-end)
-
--- Mobile support
-local IsOnMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-
-if IsOnMobile then
-    local MobileButton = Create("ImageButton", {
-        Name = "MobileToggle",
-        Size = UDim2.new(0, 50, 0, 50),
-        Position = UDim2.new(1, -60, 1, -60),
-        AnchorPoint = Vector2.new(1, 1),
-        BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Accent,
-        BackgroundTransparency = 0.7,
-        Image = "rbxassetid://10734922324",
-        Parent = MainUI
-    })
-    
-    Create("UICorner", {
-        CornerRadius = UDim.new(1, 0),
-        Parent = MobileButton
-    })
-    
-    -- Make mobile button draggable
-    local mobileDragging
-    local mobileDragStart
-    local mobileStartPos
-    
-    MobileButton.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            mobileDragging = true
-            mobileDragStart = input.Position
-            mobileStartPos = MobileButton.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    mobileDragging = false
-                end
-            end)
-        end
-    end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        if mobileDragging and input.UserInputType == Enum.UserInputType.Touch then
-            local delta = input.Position - mobileDragStart
-            MobileButton.Position = UDim2.new(
-                mobileStartPos.X.Scale, 
-                mobileStartPos.X.Offset + delta.X,
-                mobileStartPos.Y.Scale, 
-                mobileStartPos.Y.Offset + delta.Y
-            )
-        end
-    end)
-    
-    MobileButton.MouseButton1Click:Connect(function()
-        MainFrame.Visible = not MainFrame.Visible
-    end)
-end
-
-
-
-
--- Sidebar
+-- Sidebar (reduced width for compactness)
 local Sidebar = Create("Frame", {
     Name = "Sidebar",
-    Size = UDim2.new(0, 180, 1, -40),
-    Position = UDim2.new(0, 0, 0, 40),
+    Size = UDim2.new(0, 140, 1, -35), -- Reduced width and adjusted for new TitleBar height
+    Position = UDim2.new(0, 0, 0, 35),
     BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Secondary,
     BackgroundTransparency = Nazuro.Settings.Transparency + 0.1,
     Parent = MainFrame
@@ -293,17 +195,17 @@ Create("UIListLayout", {
 })
 
 Create("UIPadding", {
-    PaddingTop = UDim.new(0, 10),
-    PaddingLeft = UDim.new(0, 10),
-    PaddingRight = UDim.new(0, 10),
+    PaddingTop = UDim.new(0, 8),
+    PaddingLeft = UDim.new(0, 8),
+    PaddingRight = UDim.new(0, 8),
     Parent = TabList
 })
 
--- Content Area
+-- Content Area (adjusted for new sidebar width)
 local ContentArea = Create("Frame", {
     Name = "ContentArea",
-    Size = UDim2.new(1, -180, 1, -40),
-    Position = UDim2.new(0, 180, 0, 40),
+    Size = UDim2.new(1, -140, 1, -35),
+    Position = UDim2.new(0, 140, 0, 35),
     BackgroundTransparency = 1,
     Parent = MainFrame
 })
@@ -316,51 +218,63 @@ local TabContent = Create("Frame", {
 })
 
 Create("UIPadding", {
-    PaddingTop = UDim.new(0, 15),
-    PaddingLeft = UDim.new(0, 15),
-    PaddingRight = UDim.new(0, 15),
-    PaddingBottom = UDim.new(0, 15),
+    PaddingTop = UDim.new(0, 10),
+    PaddingLeft = UDim.new(0, 10),
+    PaddingRight = UDim.new(0, 10),
+    PaddingBottom = UDim.new(0, 10),
     Parent = TabContent
 })
 
--- Drag functionality
-local dragging
+-- Improved Drag Functionality
+local dragging = false
 local dragInput
 local dragStart
 local startPos
 
 local function UpdateInput(input)
     local delta = input.Position - dragStart
-    MainFrame.Position = UDim2.new(
-        startPos.X.Scale, 
+    local newPos = UDim2.new(
+        startPos.X.Scale,
         startPos.X.Offset + delta.X,
-        startPos.Y.Scale, 
+        startPos.Y.Scale,
         startPos.Y.Offset + delta.Y
     )
+    
+    -- Clamp position to stay within screen bounds
+    local screenSize = MainUI.Parent.AbsoluteSize
+    local frameSize = MainFrame.AbsoluteSize
+    local minX = -frameSize.X / 2
+    local maxX = screenSize.X - frameSize.X / 2
+    local minY = -frameSize.Y / 2
+    local maxY = screenSize.Y - frameSize.Y / 2
+    
+    newPos = UDim2.new(
+        0.5,
+        math.clamp(newPos.X.Offset, minX, maxX),
+        0.5,
+        math.clamp(newPos.Y.Offset, minY, maxY)
+    )
+    
+    Tween(MainFrame, {Position = newPos}, 0.1) -- Smooth drag with tween
 end
 
 TitleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
         dragStart = input.Position
         startPos = MainFrame.Position
-        
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
     end
 end)
 
-TitleBar.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
-        dragInput = input
+TitleBar.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
     end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        dragInput = input
         UpdateInput(input)
     end
 end)
@@ -372,7 +286,6 @@ function Nazuro:CreateWindow(options)
         CurrentTab = nil
     }
     
-    MainUI.Parent = CoreGui
     Title.Text = options.Name or "Nazuro UI"
     
     if options.Theme then
@@ -388,7 +301,7 @@ function Nazuro:CreateWindow(options)
         
         local tabButton = Create("TextButton", {
             Name = options.Name,
-            Size = UDim2.new(1, -10, 0, 40),
+            Size = UDim2.new(1, -10, 0, 35), -- Reduced height
             BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Secondary,
             BackgroundTransparency = Nazuro.Settings.Transparency,
             Text = "",
@@ -402,8 +315,8 @@ function Nazuro:CreateWindow(options)
         
         local tabIcon = Create("ImageLabel", {
             Name = "Icon",
-            Size = UDim2.new(0, 20, 0, 20),
-            Position = UDim2.new(0, 10, 0.5, -10),
+            Size = UDim2.new(0, 18, 0, 18), -- Slightly smaller icon
+            Position = UDim2.new(0, 8, 0.5, -9),
             BackgroundTransparency = 1,
             Image = tab.Icon,
             ImageColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text,
@@ -412,14 +325,14 @@ function Nazuro:CreateWindow(options)
         
         local tabTitle = Create("TextLabel", {
             Name = "Title",
-            Size = UDim2.new(1, -40, 1, 0),
-            Position = UDim2.new(0, 40, 0, 0),
+            Size = UDim2.new(1, -35, 1, 0),
+            Position = UDim2.new(0, 35, 0, 0),
             BackgroundTransparency = 1,
             Text = tab.Name,
             TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text,
             TextXAlignment = Enum.TextXAlignment.Left,
             Font = Enum.Font.Gotham,
-            TextSize = 14,
+            TextSize = 13, -- Slightly smaller text
             Parent = tabButton
         })
         
@@ -435,7 +348,7 @@ function Nazuro:CreateWindow(options)
         
         Create("UIListLayout", {
             SortOrder = Enum.SortOrder.LayoutOrder,
-            Padding = UDim.new(0, 15),
+            Padding = UDim.new(0, 10), -- Reduced padding
             Parent = tabContent
         })
         
@@ -471,13 +384,13 @@ function Nazuro:CreateWindow(options)
             
             local sectionTitle = Create("TextLabel", {
                 Name = "Title",
-                Size = UDim2.new(1, 0, 0, 30),
+                Size = UDim2.new(1, 0, 0, 25), -- Reduced height
                 BackgroundTransparency = 1,
                 Text = section.Name,
                 TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 Font = Enum.Font.GothamBold,
-                TextSize = 16,
+                TextSize = 15, -- Slightly smaller text
                 Parent = sectionFrame
             })
             
@@ -490,7 +403,7 @@ function Nazuro:CreateWindow(options)
             
             Create("UIListLayout", {
                 SortOrder = Enum.SortOrder.LayoutOrder,
-                Padding = UDim.new(0, 10),
+                Padding = UDim.new(0, 8), -- Reduced padding
                 Parent = sectionContent
             })
             
@@ -500,19 +413,19 @@ function Nazuro:CreateWindow(options)
             function section:UpdateSize()
                 local contentSize = sectionContent.UIListLayout.AbsoluteContentSize
                 sectionContent.Size = UDim2.new(1, 0, 0, contentSize.Y)
-                sectionFrame.Size = UDim2.new(1, 0, 0, 30 + contentSize.Y)
+                sectionFrame.Size = UDim2.new(1, 0, 0, 25 + contentSize.Y)
             end
             
             function section:CreateButton(options)
                 local button = Create("TextButton", {
                     Name = options.Name,
-                    Size = UDim2.new(1, 0, 0, 40),
+                    Size = UDim2.new(1, 0, 0, 35), -- Reduced height
                     BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Accent,
                     BackgroundTransparency = 0.5,
                     Text = options.Name,
                     TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text,
                     Font = Enum.Font.Gotham,
-                    TextSize = 14,
+                    TextSize = 13, -- Slightly smaller text
                     Parent = section.Content
                 })
                 
@@ -553,7 +466,7 @@ function Nazuro:CreateWindow(options)
                 
                 local toggleFrame = Create("Frame", {
                     Name = options.Name,
-                    Size = UDim2.new(1, 0, 0, 40),
+                    Size = UDim2.new(1, 0, 0, 35), -- Reduced height
                     BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Secondary,
                     BackgroundTransparency = Nazuro.Settings.Transparency,
                     Parent = section.Content
@@ -573,21 +486,21 @@ function Nazuro:CreateWindow(options)
                 
                 local toggleTitle = Create("TextLabel", {
                     Name = "Title",
-                    Size = UDim2.new(1, -60, 1, 0),
-                    Position = UDim2.new(0, 15, 0, 0),
+                    Size = UDim2.new(1, -55, 1, 0),
+                    Position = UDim2.new(0, 10, 0, 0),
                     BackgroundTransparency = 1,
                     Text = options.Name,
                     TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     Font = Enum.Font.Gotham,
-                    TextSize = 14,
+                    TextSize = 13, -- Slightly smaller text
                     Parent = toggleFrame
                 })
                 
                 local toggleSwitch = Create("Frame", {
                     Name = "Switch",
-                    Size = UDim2.new(0, 50, 0, 25),
-                    Position = UDim2.new(1, -15, 0.5, -12.5),
+                    Size = UDim2.new(0, 45, 0, 22), -- Slightly smaller switch
+                    Position = UDim2.new(1, -10, 0.5, -11),
                     AnchorPoint = Vector2.new(1, 0.5),
                     BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Secondary,
                     BackgroundTransparency = Nazuro.Settings.Transparency,
@@ -608,8 +521,8 @@ function Nazuro:CreateWindow(options)
                 
                 local toggleIndicator = Create("Frame", {
                     Name = "Indicator",
-                    Size = UDim2.new(0, 21, 0, 21),
-                    Position = toggle.Value and UDim2.new(1, -23, 0.5, -10.5) or UDim2.new(0, 2, 0.5, -10.5),
+                    Size = UDim2.new(0, 18, 0, 18), -- Slightly smaller indicator
+                    Position = toggle.Value and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9),
                     AnchorPoint = Vector2.new(1, 0.5),
                     BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Accent,
                     Parent = toggleSwitch
@@ -622,7 +535,7 @@ function Nazuro:CreateWindow(options)
                 
                 local function UpdateToggle()
                     Tween(toggleIndicator, {
-                        Position = toggle.Value and UDim2.new(1, -23, 0.5, -10.5) or UDim2.new(0, 2, 0.5, -10.5),
+                        Position = toggle.Value and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9),
                         BackgroundColor3 = toggle.Value and Nazuro.Themes[Nazuro.Settings.CurrentTheme].Accent or Nazuro.Themes[Nazuro.Settings.CurrentTheme].SubText
                     })
                     
@@ -660,39 +573,39 @@ function Nazuro:CreateWindow(options)
                 
                 local sliderFrame = Create("Frame", {
                     Name = options.Name,
-                    Size = UDim2.new(1, 0, 0, 60),
+                    Size = UDim2.new(1, 0, 0, 50), -- Reduced height
                     BackgroundTransparency = 1,
                     Parent = section.Content
                 })
                 
                 local sliderTitle = Create("TextLabel", {
                     Name = "Title",
-                    Size = UDim2.new(1, 0, 0, 20),
+                    Size = UDim2.new(1, 0, 0, 18), -- Slightly smaller
                     BackgroundTransparency = 1,
                     Text = options.Name,
                     TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     Font = Enum.Font.Gotham,
-                    TextSize = 14,
+                    TextSize = 13, -- Slightly smaller text
                     Parent = sliderFrame
                 })
                 
                 local sliderValue = Create("TextLabel", {
                     Name = "Value",
-                    Size = UDim2.new(1, 0, 0, 20),
+                    Size = UDim2.new(1, 0, 0, 18),
                     BackgroundTransparency = 1,
                     Text = tostring(slider.Value),
                     TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].SubText,
                     TextXAlignment = Enum.TextXAlignment.Right,
                     Font = Enum.Font.Gotham,
-                    TextSize = 14,
+                    TextSize = 13,
                     Parent = sliderFrame
                 })
                 
                 local sliderBar = Create("Frame", {
                     Name = "Bar",
                     Size = UDim2.new(1, 0, 0, 5),
-                    Position = UDim2.new(0, 0, 1, -15),
+                    Position = UDim2.new(0, 0, 1, -12),
                     AnchorPoint = Vector2.new(0, 1),
                     BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Secondary,
                     BackgroundTransparency = Nazuro.Settings.Transparency,
@@ -725,7 +638,7 @@ function Nazuro:CreateWindow(options)
                 
                 local sliderHandle = Create("Frame", {
                     Name = "Handle",
-                    Size = UDim2.new(0, 15, 0, 15),
+                    Size = UDim2.new(0, 12, 0, 12), -- Slightly smaller handle
                     Position = UDim2.new(sliderFill.Size.X.Scale, 0, 0.5, 0),
                     AnchorPoint = Vector2.new(0.5, 0.5),
                     BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Accent,
@@ -762,7 +675,7 @@ function Nazuro:CreateWindow(options)
                 end
                 
                 sliderBar.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                         dragging = true
                         local percent = (input.Position.X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X
                         UpdateSlider(slider.Min + percent * (slider.Max - slider.Min))
@@ -770,13 +683,13 @@ function Nazuro:CreateWindow(options)
                 end)
                 
                 sliderBar.InputEnded:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                         dragging = false
                     end
                 end)
                 
                 UserInputService.InputChanged:Connect(function(input)
-                    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                         local percent = (input.Position.X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X
                         UpdateSlider(slider.Min + percent * (slider.Max - slider.Min))
                     end
@@ -807,7 +720,7 @@ function Nazuro:CreateWindow(options)
                 
                 local dropdownFrame = Create("Frame", {
                     Name = options.Name,
-                    Size = UDim2.new(1, 0, 0, 40),
+                    Size = UDim2.new(1, 0, 0, 35), -- Reduced height
                     BackgroundColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Secondary,
                     BackgroundTransparency = Nazuro.Settings.Transparency,
                     Parent = section.Content
@@ -827,34 +740,34 @@ function Nazuro:CreateWindow(options)
                 
                 local dropdownTitle = Create("TextLabel", {
                     Name = "Title",
-                    Size = UDim2.new(1, -60, 1, 0),
-                    Position = UDim2.new(0, 15, 0, 0),
+                    Size = UDim2.new(1, -55, 1, 0),
+                    Position = UDim2.new(0, 10, 0, 0),
                     BackgroundTransparency = 1,
                     Text = options.Name,
                     TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     Font = Enum.Font.Gotham,
-                    TextSize = 14,
+                    TextSize = 13, -- Slightly smaller text
                     Parent = dropdownFrame
                 })
                 
                 local dropdownValue = Create("TextLabel", {
                     Name = "Value",
-                    Size = UDim2.new(1, -60, 1, 0),
-                    Position = UDim2.new(0, 15, 0, 0),
+                    Size = UDim2.new(1, -55, 1, 0),
+                    Position = UDim2.new(0, 10, 0, 0),
                     BackgroundTransparency = 1,
                     Text = tostring(dropdown.Value),
                     TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].SubText,
                     TextXAlignment = Enum.TextXAlignment.Right,
                     Font = Enum.Font.Gotham,
-                    TextSize = 14,
+                    TextSize = 13,
                     Parent = dropdownFrame
                 })
                 
                 local dropdownArrow = Create("ImageLabel", {
                     Name = "Arrow",
-                    Size = UDim2.new(0, 20, 0, 20),
-                    Position = UDim2.new(1, -15, 0.5, -10),
+                    Size = UDim2.new(0, 18, 0, 18), -- Slightly smaller arrow
+                    Position = UDim2.new(1, -10, 0.5, -9),
                     AnchorPoint = Vector2.new(1, 0.5),
                     BackgroundTransparency = 1,
                     Image = "rbxassetid://10734922324",
@@ -894,7 +807,7 @@ function Nazuro:CreateWindow(options)
                     if dropdown.Open then
                         dropdownList.Visible = true
                         Tween(dropdownArrow, {Rotation = 0})
-                        Tween(dropdownList, {Size = UDim2.new(1, 0, 0, #dropdown.Options * 35)})
+                        Tween(dropdownList, {Size = UDim2.new(1, 0, 0, #dropdown.Options * 30)}) -- Reduced option height
                     else
                         Tween(dropdownArrow, {Rotation = 180})
                         Tween(dropdownList, {Size = UDim2.new(1, 0, 0, 0)}, function()
@@ -906,7 +819,7 @@ function Nazuro:CreateWindow(options)
                 local function CreateOption(option)
                     local optionButton = Create("TextButton", {
                         Name = tostring(option),
-                        Size = UDim2.new(1, 0, 0, 35),
+                        Size = UDim2.new(1, 0, 0, 30), -- Reduced height
                         BackgroundTransparency = 1,
                         Text = "",
                         Parent = dropdownList
@@ -914,14 +827,14 @@ function Nazuro:CreateWindow(options)
                     
                     local optionText = Create("TextLabel", {
                         Name = "Text",
-                        Size = UDim2.new(1, -20, 1, 0),
-                        Position = UDim2.new(0, 10, 0, 0),
+                        Size = UDim2.new(1, -15, 1, 0),
+                        Position = UDim2.new(0, 8, 0, 0),
                         BackgroundTransparency = 1,
                         Text = tostring(option),
                         TextColor3 = Nazuro.Themes[Nazuro.Settings.CurrentTheme].Text,
                         TextXAlignment = Enum.TextXAlignment.Left,
                         Font = Enum.Font.Gotham,
-                        TextSize = 14,
+                        TextSize = 13, -- Slightly smaller text
                         Parent = optionButton
                     })
                     
