@@ -365,11 +365,6 @@ function e:CreateLibrary(G, H)
 
 
 
-
-
--- Inside the UI library code, look for the part where tabs are created (around the CreateTab function)
--- Modify the tab creation and selection logic to include the visual effects you want
-
 function M:CreateTab(S, H)
     if not S then
         return
@@ -377,7 +372,20 @@ function M:CreateTab(S, H)
 
     local U
     local TabButton
-    local TabHighlight -- This will be the line behind the selected tab
+    
+    -- Create the single highlight line if it doesn't exist
+    if not K:FindFirstChild("TabHighlight") then
+        local TabHighlight = Instance.new("Frame")
+        TabHighlight.Name = "TabHighlight"
+        TabHighlight.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        TabHighlight.BorderSizePixel = 0
+        TabHighlight.Size = UDim2.new(0.6, 0, 0, 2)
+        TabHighlight.Position = UDim2.new(0.2, 0, 0.5, 0)
+        TabHighlight.AnchorPoint = Vector2.new(0.5, 0.5)
+        TabHighlight.ZIndex = 0  -- Make sure it's behind the icons
+        TabHighlight.Visible = false
+        TabHighlight.Parent = K
+    end
 
     if S ~= "Settings" then
         local T = K.Template:Clone()
@@ -387,17 +395,6 @@ function M:CreateTab(S, H)
         T.TextLabel.Text = typeof(S) == "table" and S.Title or S or "Unknown"
         T.Visible = true
         T.Parent = K
-        
-        -- Create the highlight line for this tab
-        TabHighlight = Instance.new("Frame")
-        TabHighlight.Name = "Highlight"
-        TabHighlight.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        TabHighlight.BorderSizePixel = 0
-        TabHighlight.Size = UDim2.new(0.7, 0, 0, 2)
-        TabHighlight.Position = UDim2.new(0.15, 0, 1, -2)
-        TabHighlight.AnchorPoint = Vector2.new(0, 1)
-        TabHighlight.Visible = false
-        TabHighlight.Parent = T
         
         U = L.Template:Clone()
         L.Template.Visible = false
@@ -418,7 +415,7 @@ function M:CreateTab(S, H)
             if L.UIPageLayout.CurrentPage ~= U then
                 -- Reset all tabs to normal state
                 for _, tab in ipairs(K:GetChildren()) do
-                    if tab:IsA("Frame") and tab.Name ~= "Template" then
+                    if tab:IsA("Frame") and tab.Name ~= "Template" and tab.Name ~= "TabHighlight" then
                         -- Make other tabs transparent and pushed back
                         q:Create(tab, e.Theme.Dark.TweenInfo, {
                             BackgroundTransparency = 0.85,
@@ -430,11 +427,6 @@ function M:CreateTab(S, H)
                         q:Create(tab.ImageLabel, e.Theme.Dark.TweenInfo, {
                             ImageTransparency = 0.5
                         }):Play()
-                        
-                        -- Hide highlight for other tabs
-                        if tab:FindFirstChild("Highlight") then
-                            tab.Highlight.Visible = false
-                        end
                     end
                 end
                 
@@ -450,8 +442,14 @@ function M:CreateTab(S, H)
                     ImageTransparency = 0
                 }):Play()
                 
-                -- Show highlight for current tab
-                TabHighlight.Visible = true
+                -- Move the highlight line to this tab
+                local highlight = K:FindFirstChild("TabHighlight")
+                if highlight then
+                    highlight.Visible = true
+                    q:Create(highlight, e.Theme.Dark.TweenInfo, {
+                        Position = UDim2.new(0.5, 0, 0.5, 0, T)
+                    }):Play()
+                end
                 
                 L.UIPageLayout:JumpTo(U)
             end
@@ -484,7 +482,13 @@ function M:CreateTab(S, H)
             q:Create(TabButton.ImageLabel, e.Theme.Dark.TweenInfo, {
                 ImageTransparency = 0
             }):Play()
-            TabHighlight.Visible = true
+            
+            -- Show highlight for current tab
+            local highlight = K:FindFirstChild("TabHighlight")
+            if highlight then
+                highlight.Visible = true
+                highlight.Position = UDim2.new(0.5, 0, 0.5, 0, TabButton)
+            end
         end
     elseif TabButton then
         q:Create(TabButton, e.Theme.Dark.TweenInfo, {
@@ -501,6 +505,26 @@ function M:CreateTab(S, H)
 
     local X = {}
     -- ... rest of the CreateTab function remains the same ...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
