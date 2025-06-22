@@ -28,7 +28,7 @@ Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 6)
 local TitleBar = Instance.new("TextLabel", Main)
 TitleBar.Size = UDim2.new(1, 0, 0, 40)
 TitleBar.BackgroundColor3 = Color3.fromRGB(38, 26, 66)
-TitleBar.Text = "   Nazuro UI Library - Executor Edition"
+TitleBar.Text = "   Nazuro UI Library - Modern Web Edition"
 TitleBar.TextColor3 = Color3.fromRGB(220, 220, 255)
 TitleBar.Font = Enum.Font.GothamSemibold
 TitleBar.TextSize = 16
@@ -156,56 +156,6 @@ function NazuroUI:CreateToggle(parent, labelText, callback)
     end)
 end
 
-function NazuroUI:CreateSlider(parent, labelText, minValue, maxValue, defaultValue, callback)
-    local holder = Instance.new("Frame", parent)
-    holder.Size = UDim2.new(1, -20, 0, 30)
-    holder.Position = UDim2.new(0, 10, 0, 0)
-    holder.BackgroundTransparency = 1
-
-    local label = Instance.new("TextLabel", holder)
-    label.Text = labelText
-    label.Size = UDim2.new(0.7, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.Font = Enum.Font.Gotham
-    label.TextSize = 14
-    label.TextXAlignment = Enum.TextXAlignment.Left
-
-    local valueLabel = Instance.new("TextLabel", holder)
-    valueLabel.Size = UDim2.new(0.3, 0, 1, 0)
-    valueLabel.Position = UDim2.new(0.7, 0, 0, 0)
-    valueLabel.BackgroundTransparency = 1
-    valueLabel.TextColor3 = Color3.fromRGB(220, 220, 255)
-    valueLabel.Font = Enum.Font.Gotham
-    valueLabel.TextSize = 14
-    valueLabel.Text = tostring(defaultValue)
-
-    local slider = Instance.new("TextButton", holder)
-    slider.Size = UDim2.new(1, -20, 0, 5)
-    slider.Position = UDim2.new(0, 10, 0, 20)
-    slider.BackgroundColor3 = Color3.fromRGB(64, 48, 120)
-    slider.Text = ""
-    Instance.new("UICorner", slider).CornerRadius = UDim.new(1, 0)
-
-    local knob = Instance.new("Frame", slider)
-    knob.Size = UDim2.new(0, 10, 1, 0)
-    knob.BackgroundColor3 = Color3.fromRGB(140, 90, 255)
-    Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
-    local value = defaultValue
-
-    slider.MouseButton1Down:Connect(function(input)
-        local mouse = uis:GetMouseLocation()
-        local x = math.clamp(mouse.X - slider.AbsolutePosition.X, 0, slider.AbsoluteSize.X)
-        value = minValue + (maxValue - minValue) * (x / slider.AbsoluteSize.X)
-        value = math.floor(value)
-        knob.Position = UDim2.new(0, x - 5, 0, 0)
-        valueLabel.Text = tostring(value)
-        if callback then callback(value) end
-    end)
-
-    return value
-end
-
 function NazuroUI:CreateButton(parent, text, callback)
     local btn = Instance.new("TextButton", parent)
     btn.Size = UDim2.new(1, -20, 0, 30)
@@ -241,17 +191,76 @@ function NazuroUI:CreateSection(parent, title)
     return section
 end
 
--- Initialize UI
-local performancePage = NazuroUI:CreateTab("Performance")
-local optimizationSection = NazuroUI:CreateSection(performancePage, "Optimization")
-NazuroUI:CreateToggle(optimizationSection, "Hardware Acceleration", function(state) print("Hardware Acceleration: " .. tostring(state)) end)
-NazuroUI:CreateToggle(optimizationSection, "Reduce Animations", function(state) print("Reduce Animations: " .. tostring(state)) end)
+-- NEW: Create Slider function
+function NazuroUI:CreateSlider(parent, labelText, minValue, maxValue, defaultValue, callback)
+    local holder = Instance.new("Frame", parent)
+    holder.Size = UDim2.new(1, -20, 0, 50)
+    holder.Position = UDim2.new(0, 10, 0, 0)
+    holder.BackgroundTransparency = 1
 
-local memorySection = NazuroUI:CreateSection(performancePage, "Memory")
-NazuroUI:CreateSlider(memorySection, "Cache Size (MB)", 0, 500, 150, function(value) print("Cache Size: " .. value) end)
-NazuroUI:CreateButton(memorySection, "Clear Cache", function() print("Cache Cleared") end)
+    local label = Instance.new("TextLabel", holder)
+    label.Text = labelText
+    label.Size = UDim2.new(1, 0, 0, 20)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 14
+    label.TextXAlignment = Enum.TextXAlignment.Left
 
-local fpsSection = NazuroUI:CreateSection(performancePage, "FPS Limit")
-NazuroUI:CreateSlider(fpsSection, "FPS Limit", 30, 120, 60, function(value) print("FPS Limit: " .. value) end)
+    local slider = Instance.new("Frame", holder)
+    slider.Size = UDim2.new(1, 0, 0, 5)
+    slider.Position = UDim2.new(0, 0, 0, 25)
+    slider.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
+    Instance.new("UICorner", slider).CornerRadius = UDim.new(1, 0)
+
+    local fill = Instance.new("Frame", slider)
+    fill.Size = UDim2.new((defaultValue - minValue) / (maxValue - minValue), 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(140, 90, 255)
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+
+    local knob = Instance.new("TextButton", slider)
+    knob.Size = UDim2.new(0, 15, 0, 15)
+    knob.Position = UDim2.new((defaultValue - minValue) / (maxValue - minValue), -7.5, 0.5, -7.5)
+    knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    knob.Text = ""
+    knob.ZIndex = 2
+    Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
+
+    local valueLabel = Instance.new("TextLabel", holder)
+    valueLabel.Size = UDim2.new(0, 50, 0, 20)
+    valueLabel.Position = UDim2.new(1, -50, 0, 25)
+    valueLabel.Text = tostring(defaultValue)
+    valueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    valueLabel.Font = Enum.Font.Gotham
+    valueLabel.TextSize = 14
+    valueLabel.BackgroundTransparency = 1
+    valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+
+    local dragging = false
+    knob.MouseButton1Down:Connect(function()
+        dragging = true
+    end)
+
+    uis.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+
+    uis.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local xPos = (input.Position.X - slider.AbsolutePosition.X) / slider.AbsoluteSize.X
+            xPos = math.clamp(xPos, 0, 1)
+            local value = math.floor(minValue + (maxValue - minValue) * xPos)
+            
+            fill.Size = UDim2.new(xPos, 0, 1, 0)
+            knob.Position = UDim2.new(xPos, -7.5, 0.5, -7.5)
+            valueLabel.Text = tostring(value)
+            
+            if callback then callback(value) end
+        end
+    end)
+end
+
 
 return NazuroUI
