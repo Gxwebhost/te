@@ -1,351 +1,364 @@
-local NebulaUI = {}
+--[[
+    SimpleUI Library
+    A lightweight UI library inspired by WindUI
+]]
 
--- Services
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-
--- Constants
-local SCREEN_GUI = Instance.new("ScreenGui")
-SCREEN_GUI.Name = "NebulaUI"
-SCREEN_GUI.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-SCREEN_GUI.IgnoreGuiInset = true
-
-local DEFAULT_THEME = {
-    Background = Color3.fromRGB(20, 20, 30),
-    Sidebar = Color3.fromRGB(40, 40, 60),
-    Accent = Color3.fromRGB(100, 60, 120),
-    Text = Color3.fromRGB(200, 200, 200),
-    ToggleOn = Color3.fromRGB(100, 60, 120),
-    ToggleOff = Color3.fromRGB(60, 60, 80)
+local SimpleUI = {
+    Themes = {
+        Dark = {
+            Background = Color3.fromRGB(25, 25, 30),
+            Primary = Color3.fromRGB(45, 45, 50),
+            Secondary = Color3.fromRGB(35, 35, 40),
+            Text = Color3.fromRGB(240, 240, 240),
+            Accent = Color3.fromRGB(100, 150, 255)
+        },
+        Light = {
+            Background = Color3.fromRGB(240, 240, 245),
+            Primary = Color3.fromRGB(220, 220, 225),
+            Secondary = Color3.fromRGB(200, 200, 210),
+            Text = Color3.fromRGB(30, 30, 35),
+            Accent = Color3.fromRGB(80, 130, 235)
+        }
+    },
+    CurrentTheme = "Dark",
+    Elements = {},
+    Services = {
+        RunService = game:GetService("RunService"),
+        UserInputService = game:GetService("UserInputService"),
+        TweenService = game:GetService("TweenService")
+    }
 }
 
--- Utility Functions
-local function CreateInstance(className, properties)
+-- Utility functions
+function SimpleUI:Create(className, properties, children)
     local instance = Instance.new(className)
-    for prop, value in pairs(properties) do
-        instance[prop] = value
+    
+    for property, value in pairs(properties) do
+        instance[property] = value
     end
+    
+    if children then
+        for _, child in ipairs(children) do
+            child.Parent = instance
+        end
+    end
+    
     return instance
 end
 
-local function Tween(instance, time, properties)
-    return TweenService:Create(instance, TweenInfo.new(time), properties):Play()
+function SimpleUI:Tween(instance, properties, duration, easingStyle, easingDirection)
+    local tweenInfo = TweenInfo.new(
+        duration or 0.2,
+        easingStyle or Enum.EasingStyle.Quad,
+        easingDirection or Enum.EasingDirection.Out
+    )
+    local tween = self.Services.TweenService:Create(instance, tweenInfo, properties)
+    tween:Play()
+    return tween
 end
 
--- UI Creation
-function NebulaUI:Init()
-    local ui = {
-        ScreenGui = SCREEN_GUI,
-        MainFrame = CreateInstance("Frame", {
-            Size = UDim2.new(0, 300, 0, 400),
-            Position = UDim2.new(0.5, -150, 0.5, -200),
-            BackgroundColor3 = DEFAULT_THEME.Background,
-            BorderSizePixel = 0,
-            Parent = SCREEN_GUI
-        }),
-        Sidebar = CreateInstance("Frame", {
-            Size = UDim2.new(0, 100, 1, 0),
-            BackgroundColor3 = DEFAULT_THEME.Sidebar,
-            BorderSizePixel = 0,
-            Parent = ui.MainFrame
-        }),
-        Content = CreateInstance("Frame", {
-            Size = UDim2.new(0, 200, 1, 0),
-            Position = UDim2.new(0, 100, 0, 0),
+-- Window creation
+function SimpleUI:CreateWindow(options)
+    options = options or {}
+    local window = {
+        Title = options.Title or "SimpleUI Window",
+        Size = options.Size or UDim2.new(0, 500, 0, 400),
+        Position = options.Position or UDim2.new(0.5, 0, 0.5, 0),
+        Theme = options.Theme or self.CurrentTheme,
+        Elements = {}
+    }
+    
+    -- Main window frame
+    window.MainFrame = self:Create("Frame", {
+        Name = "SimpleUIWindow",
+        Size = window.Size,
+        Position = window.Position,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        BackgroundColor3 = self.Themes[window.Theme].Background,
+        ClipsDescendants = true
+    }, {
+        self:Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
+        self:Create("UIStroke", {
+            Color = self.Themes[window.Theme].Accent,
+            Thickness = 1
+        })
+    })
+    
+    -- Title bar
+    window.TitleBar = self:Create("Frame", {
+        Name = "TitleBar",
+        Size = UDim2.new(1, 0, 0, 30),
+        BackgroundColor3 = self.Themes[window.Theme].Primary,
+        BorderSizePixel = 0
+    }, {
+        self:Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
+        self:Create("TextLabel", {
+            Text = window.Title,
+            TextColor3 = self.Themes[window.Theme].Text,
+            Font = Enum.Font.SemiBold,
+            TextSize = 16,
+            Size = UDim2.new(1, -60, 1, 0),
+            Position = UDim2.new(0, 10, 0, 0),
             BackgroundTransparency = 1,
-            BorderSizePixel = 0,
-            Parent = ui.MainFrame
+            TextXAlignment = Enum.TextXAlignment.Left
+        }),
+        self:Create("TextButton", {
+            Name = "CloseButton",
+            Text = "X",
+            TextColor3 = self.Themes[window.Theme].Text,
+            Font = Enum.Font.SemiBold,
+            TextSize = 16,
+            Size = UDim2.new(0, 30, 1, 0),
+            Position = UDim2.new(1, -30, 0, 0),
+            BackgroundColor3 = Color3.fromRGB(255, 60, 60),
+            AutoButtonColor = false
+        }, {
+            self:Create("UICorner", {CornerRadius = UDim.new(0, 8)})
         })
-    }
-
-    -- Title
-    CreateInstance("TextLabel", {
-        Size = UDim2.new(1, 0, 0, 40),
-        BackgroundTransparency = 1,
-        Text = "Nebula UI - Modern Edition",
-        TextColor3 = DEFAULT_THEME.Text,
-        TextSize = 16,
-        Font = Enum.Font.GothamBold,
-        Parent = ui.MainFrame
     })
-
-    -- Sidebar Navigation
-    local sidebarLayout = CreateInstance("UIListLayout", {
-        Padding = UDim.new(0, 5),
-        HorizontalAlignment = Enum.HorizontalAlignment.Left,
-        VerticalAlignment = Enum.VerticalAlignment.Top,
-        Parent = ui.Sidebar
+    
+    window.TitleBar.Parent = window.MainFrame
+    
+    -- Content frame
+    window.ContentFrame = self:Create("Frame", {
+        Name = "ContentFrame",
+        Size = UDim2.new(1, -20, 1, -50),
+        Position = UDim2.new(0, 10, 0, 40),
+        BackgroundTransparency = 1
     })
-
-    local sections = {
-        {Icon = "⚙️", Name = "General"},
-        {Icon = "🎨", Name = "Style"},
-        {Icon = "⚡", Name = "Performance"},
-        {Icon = "💻", Name = "Lua"},
-        {Icon = "💾", Name = "Code"}
-    }
-
-    local currentSection = "Performance"
-    for _, section in ipairs(sections) do
-        local button = CreateInstance("TextButton", {
-            Size = UDim2.new(1, -10, 0, 30),
-            Position = UDim2.new(0, 5, 0, 0),
-            BackgroundColor3 = DEFAULT_THEME.Sidebar,
-            Text = section.Icon .. " " .. section.Name,
-            TextColor3 = DEFAULT_THEME.Text,
-            TextSize = 14,
-            Font = Enum.Font.Gotham,
-            BorderSizePixel = 0,
-            Parent = ui.Sidebar
+    window.ContentFrame.Parent = window.MainFrame
+    
+    -- Dragging functionality
+    local dragging = false
+    local dragInput, dragStart, startPos
+    
+    window.TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = window.MainFrame.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    window.TitleBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+    
+    self.Services.UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            window.MainFrame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+    
+    -- Close button functionality
+    window.TitleBar.CloseButton.MouseButton1Click:Connect(function()
+        window.MainFrame:Destroy()
+    end)
+    
+    -- Tab system
+    function window:CreateTab(name)
+        local tab = {
+            Name = name,
+            Buttons = {},
+            Elements = {}
+        }
+        
+        -- Tab button
+        tab.Button = self:Create("TextButton", {
+            Text = name,
+            Size = UDim2.new(0, 100, 0, 30),
+            Position = UDim2.new(0, 10 + (#window.Elements * 110), 0, 5),
+            BackgroundColor3 = self.Themes[window.Theme].Secondary,
+            TextColor3 = self.Themes[window.Theme].Text,
+            Font = Enum.Font.SemiBold,
+            TextSize = 14
+        }, {
+            self:Create("UICorner", {CornerRadius = UDim.new(0, 6)})
         })
-        button.MouseButton1Click:Connect(function()
-            currentSection = section.Name
-            ui.Content:ClearAllChildren()
-            NebulaUI:BuildContent(ui.Content, currentSection)
+        tab.Button.Parent = window.TitleBar
+        
+        -- Tab content
+        tab.Content = self:Create("ScrollingFrame", {
+            Size = UDim2.new(1, 0, 1, 0),
+            BackgroundTransparency = 1,
+            ScrollBarThickness = 5,
+            Visible = #window.Elements == 0,
+            CanvasSize = UDim2.new(0, 0, 0, 0),
+            AutomaticCanvasSize = Enum.AutomaticSize.Y
+        }, {
+            self:Create("UIListLayout", {
+                Padding = UDim.new(0, 10),
+                SortOrder = Enum.SortOrder.LayoutOrder
+            }),
+            self:Create("UIPadding", {
+                PaddingTop = UDim.new(0, 10),
+                PaddingLeft = UDim.new(0, 10),
+                PaddingRight = UDim.new(0, 10)
+            })
+        })
+        tab.Content.Parent = window.ContentFrame
+        
+        -- Tab switching
+        tab.Button.MouseButton1Click:Connect(function()
+            for _, otherTab in ipairs(window.Elements) do
+                otherTab.Content.Visible = false
+                self:Tween(otherTab.Button, {BackgroundColor3 = self.Themes[window.Theme].Secondary})
+            end
+            
+            tab.Content.Visible = true
+            self:Tween(tab.Button, {BackgroundColor3 = self.Themes[window.Theme].Accent})
         end)
-        if section.Name == currentSection then
-            button.BackgroundColor3 = DEFAULT_THEME.Accent
+        
+        -- Add elements to tab
+        function tab:AddLabel(text)
+            local label = self:Create("TextLabel", {
+                Text = text,
+                TextColor3 = self.Themes[window.Theme].Text,
+                TextSize = 14,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                BackgroundTransparency = 1,
+                Size = UDim2.new(1, 0, 0, 20),
+                LayoutOrder = #tab.Elements + 1
+            })
+            label.Parent = tab.Content
+            table.insert(tab.Elements, label)
+            return label
+        end
+        
+        function tab:AddButton(text, callback)
+            local button = self:Create("TextButton", {
+                Text = text,
+                Size = UDim2.new(1, -20, 0, 30),
+                BackgroundColor3 = self.Themes[window.Theme].Secondary,
+                TextColor3 = self.Themes[window.Theme].Text,
+                Font = Enum.Font.SemiBold,
+                TextSize = 14,
+                LayoutOrder = #tab.Elements + 1,
+                AutoButtonColor = false
+            }, {
+                self:Create("UICorner", {CornerRadius = UDim.new(0, 6)})
+            })
+            
+            button.MouseButton1Click:Connect(function()
+                if callback then callback() end
+            end)
+            
+            button.MouseEnter:Connect(function()
+                self:Tween(button, {BackgroundColor3 = self.Themes[window.Theme].Primary})
+            end)
+            
+            button.MouseLeave:Connect(function()
+                self:Tween(button, {BackgroundColor3 = self.Themes[window.Theme].Secondary})
+            end)
+            
+            button.Parent = tab.Content
+            table.insert(tab.Elements, button)
+            return button
+        end
+        
+        function tab:AddToggle(text, default, callback)
+            local toggle = {
+                Value = default or false,
+                Callback = callback
+            }
+            
+            local frame = self:Create("Frame", {
+                Size = UDim2.new(1, -20, 0, 30),
+                BackgroundTransparency = 1,
+                LayoutOrder = #tab.Elements + 1
+            })
+            
+            local label = self:Create("TextLabel", {
+                Text = text,
+                TextColor3 = self.Themes[window.Theme].Text,
+                TextSize = 14,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                BackgroundTransparency = 1,
+                Size = UDim2.new(0.7, 0, 1, 0)
+            })
+            label.Parent = frame
+            
+            local toggleButton = self:Create("TextButton", {
+                Size = UDim2.new(0, 50, 0, 25),
+                Position = UDim2.new(1, -50, 0.5, 0),
+                AnchorPoint = Vector2.new(0, 0.5),
+                BackgroundColor3 = default and self.Themes[window.Theme].Accent or self.Themes[window.Theme].Secondary,
+                Text = "",
+                AutoButtonColor = false
+            }, {
+                self:Create("UICorner", {CornerRadius = UDim.new(1, 0)}),
+                self:Create("Frame", {
+                    Size = UDim2.new(0, 21, 0, 21),
+                    Position = default and UDim2.new(1, -23, 0.5, 0) or UDim2.new(0, 2, 0.5, 0),
+                    AnchorPoint = Vector2.new(0, 0.5),
+                    BackgroundColor3 = Color3.new(1, 1, 1)
+                }, {
+                    self:Create("UICorner", {CornerRadius = UDim.new(1, 0)})
+                })
+            })
+            toggleButton.Parent = frame
+            
+            toggleButton.MouseButton1Click:Connect(function()
+                toggle.Value = not toggle.Value
+                self:Tween(toggleButton, {
+                    BackgroundColor3 = toggle.Value and self.Themes[window.Theme].Accent or self.Themes[window.Theme].Secondary
+                })
+                
+                self:Tween(toggleButton:FindFirstChildOfClass("Frame"), {
+                    Position = toggle.Value and UDim2.new(1, -23, 0.5, 0) or UDim2.new(0, 2, 0.5, 0)
+                })
+                
+                if toggle.Callback then toggle.Callback(toggle.Value) end
+            end)
+            
+            frame.Parent = tab.Content
+            table.insert(tab.Elements, toggle)
+            return toggle
+        end
+        
+        table.insert(window.Elements, tab)
+        return tab
+    end
+    
+    -- Make first tab active if it exists
+    if #window.Elements > 0 then
+        window.Elements[1].Content.Visible = true
+        self:Tween(window.Elements[1].Button, {BackgroundColor3 = self.Themes[window.Theme].Accent})
+    end
+    
+    window.MainFrame.Parent = options.Parent or game:GetService("CoreGui")
+    table.insert(self.Elements, window)
+    return window
+end
+
+-- Theme management
+function SimpleUI:SetTheme(themeName)
+    if self.Themes[themeName] then
+        self.CurrentTheme = themeName
+        for _, window in ipairs(self.Elements) do
+            -- Update all window elements with new theme
+            -- This would need to be expanded to update all UI elements
+            window.MainFrame.BackgroundColor3 = self.Themes[themeName].Background
+            window.TitleBar.BackgroundColor3 = self.Themes[themeName].Primary
+            window.TitleBar.TextLabel.TextColor3 = self.Themes[themeName].Text
+            window.TitleBar.CloseButton.TextColor3 = self.Themes[themeName].Text
+            window.UIStroke.Color = self.Themes[themeName].Accent
         end
     end
-
-    -- Initial Content
-    NebulaUI:BuildContent(ui.Content, currentSection)
-
-    -- Corner
-    CreateInstance("UICorner", {
-        CornerRadius = UDim.new(0, 10),
-        Parent = ui.MainFrame
-    })
-
-    return ui
 end
 
-function NebulaUI:BuildContent(contentFrame, section)
-    contentFrame:ClearAllChildren()
-    local layout = CreateInstance("UIListLayout", {
-        Padding = UDim.new(0, 10),
-        HorizontalAlignment = Enum.HorizontalAlignment.Left,
-        VerticalAlignment = Enum.VerticalAlignment.Top,
-        Parent = contentFrame
-    })
-
-    if section == "Performance" then
-        -- Hardware Acceleration Toggle
-        local hwAccelFrame = CreateInstance("Frame", {
-            Size = UDim2.new(1, 0, 0, 40),
-            BackgroundTransparency = 1,
-            Parent = contentFrame
-        })
-        CreateInstance("TextLabel", {
-            Size = UDim2.new(0, 150, 1, 0),
-            BackgroundTransparency = 1,
-            Text = "Hardware Acceleration",
-            TextColor3 = DEFAULT_THEME.Text,
-            TextSize = 14,
-            Font = Enum.Font.Gotham,
-            Parent = hwAccelFrame
-        })
-        local hwAccelToggle = CreateInstance("TextButton", {
-            Size = UDim2.new(0, 40, 0, 20),
-            Position = UDim2.new(1, -50, 0.5, -10),
-            AnchorPoint = Vector2.new(1, 0.5),
-            BackgroundColor3 = DEFAULT_THEME.ToggleOff,
-            BorderSizePixel = 0,
-            Parent = hwAccelFrame
-        })
-        CreateInstance("UICorner", {
-            CornerRadius = UDim.new(0, 10),
-            Parent = hwAccelToggle
-        })
-        local toggleDot = CreateInstance("Frame", {
-            Size = UDim2.new(0, 18, 0, 18),
-            Position = UDim2.new(0, 1, 0.5, -9),
-            AnchorPoint = Vector2.new(0, 0.5),
-            BackgroundColor3 = DEFAULT_THEME.Text,
-            BorderSizePixel = 0,
-            Parent = hwAccelToggle
-        })
-        CreateInstance("UICorner", {
-            CornerRadius = UDim.new(0, 9),
-            Parent = toggleDot
-        })
-        local isOn = false
-        hwAccelToggle.MouseButton1Click:Connect(function()
-            isOn = not isOn
-            Tween(toggleDot, 0.2, {Position = isOn and UDim2.new(0, 21, 0.5, -9) or UDim2.new(0, 1, 0.5, -9)})
-            Tween(hwAccelToggle, 0.2, {BackgroundColor3 = isOn and DEFAULT_THEME.ToggleOn or DEFAULT_THEME.ToggleOff})
-        end)
-
-        -- Reduce Animations Toggle
-        local reduceAnimFrame = CreateInstance("Frame", {
-            Size = UDim2.new(1, 0, 0, 40),
-            BackgroundTransparency = 1,
-            Parent = contentFrame
-        })
-        CreateInstance("TextLabel", {
-            Size = UDim2.new(0, 150, 1, 0),
-            BackgroundTransparency = 1,
-            Text = "Reduce Animations",
-            TextColor3 = DEFAULT_THEME.Text,
-            TextSize = 14,
-            Font = Enum.Font.Gotham,
-            Parent = reduceAnimFrame
-        })
-        local reduceAnimToggle = CreateInstance("TextButton", {
-            Size = UDim2.new(0, 40, 0, 20),
-            Position = UDim2.new(1, -50, 0.5, -10),
-            AnchorPoint = Vector2.new(1, 0.5),
-            BackgroundColor3 = DEFAULT_THEME.ToggleOff,
-            BorderSizePixel = 0,
-            Parent = reduceAnimFrame
-        })
-        CreateInstance("UICorner", {
-            CornerRadius = UDim.new(0, 10),
-            Parent = reduceAnimToggle
-        })
-        local reduceAnimDot = CreateInstance("Frame", {
-            Size = UDim2.new(0, 18, 0, 18),
-            Position = UDim2.new(0, 1, 0.5, -9),
-            AnchorPoint = Vector2.new(0, 0.5),
-            BackgroundColor3 = DEFAULT_THEME.Text,
-            BorderSizePixel = 0,
-            Parent = reduceAnimToggle
-        })
-        CreateInstance("UICorner", {
-            CornerRadius = UDim.new(0, 9),
-            Parent = reduceAnimDot
-        })
-        local reduceAnimOn = false
-        reduceAnimToggle.MouseButton1Click:Connect(function()
-            reduceAnimOn = not reduceAnimOn
-            Tween(reduceAnimDot, 0.2, {Position = reduceAnimOn and UDim2.new(0, 21, 0.5, -9) or UDim2.new(0, 1, 0.5, -9)})
-            Tween(reduceAnimToggle, 0.2, {BackgroundColor3 = reduceAnimOn and DEFAULT_THEME.ToggleOn or DEFAULT_THEME.ToggleOff})
-        end)
-
-        -- FPS Limit Slider
-        local fpsFrame = CreateInstance("Frame", {
-            Size = UDim2.new(1, 0, 0, 40),
-            BackgroundTransparency = 1,
-            Parent = contentFrame
-        })
-        CreateInstance("TextLabel", {
-            Size = UDim2.new(0, 150, 1, 0),
-            BackgroundTransparency = 1,
-            Text = "FPS Limit",
-            TextColor3 = DEFAULT_THEME.Text,
-            TextSize = 14,
-            Font = Enum.Font.Gotham,
-            Parent = fpsFrame
-        })
-        local fpsValue = CreateInstance("TextLabel", {
-            Size = UDim2.new(0, 40, 1, 0),
-            Position = UDim2.new(1, -50, 0, 0),
-            BackgroundTransparency = 1,
-            Text = "60",
-            TextColor3 = DEFAULT_THEME.Text,
-            TextSize = 14,
-            Font = Enum.Font.Gotham,
-            Parent = fpsFrame
-        })
-        local fpsSlider = CreateInstance("Frame", {
-            Size = UDim2.new(0, 100, 0, 5),
-            Position = UDim2.new(0, 160, 0.5, -2.5),
-            AnchorPoint = Vector2.new(0, 0.5),
-            BackgroundColor3 = DEFAULT_THEME.Accent,
-            BorderSizePixel = 0,
-            Parent = fpsFrame
-        })
-        CreateInstance("UICorner", {
-            CornerRadius = UDim.new(0, 2.5),
-            Parent = fpsSlider
-        })
-        local fpsThumb = CreateInstance("Frame", {
-            Size = UDim2.new(0, 10, 0, 15),
-            Position = UDim2.new(0, 0, 0.5, -7.5),
-            AnchorPoint = Vector2.new(0, 0.5),
-            BackgroundColor3 = DEFAULT_THEME.Text,
-            BorderSizePixel = 0,
-            Parent = fpsSlider
-        })
-        CreateInstance("UICorner", {
-            CornerRadius = UDim.new(0, 5),
-            Parent = fpsThumb
-        })
-        local fps = 60
-        fpsThumb.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                local dragging = true
-                local startPos = fpsThumb.AbsolutePosition.X
-                local startMouse = input.Position.X
-                while dragging do
-                    local delta = UserInputService:GetMouseLocation().X - startMouse
-                    local newPos = math.clamp(startPos + delta, fpsSlider.AbsolutePosition.X, fpsSlider.AbsolutePosition.X + fpsSlider.AbsoluteSize.X - 10)
-                    local percentage = (newPos - fpsSlider.AbsolutePosition.X) / (fpsSlider.AbsoluteSize.X - 10)
-                    fps = math.floor(10 + percentage * 240) -- Range 10-250
-                    fpsValue.Text = tostring(fps)
-                    Tween(fpsThumb, 0.1, {Position = UDim2.new(0, newPos - fpsSlider.AbsolutePosition.X, 0.5, -7.5)})
-                    if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) == false then
-                        dragging = false
-                    end
-                    wait()
-                end
-            end
-        end)
-    elseif section == "Code" then
-        -- Memory Settings
-        local cacheSizeFrame = CreateInstance("Frame", {
-            Size = UDim2.new(1, 0, 0, 40),
-            BackgroundTransparency = 1,
-            Parent = contentFrame
-        })
-        CreateInstance("TextLabel", {
-            Size = UDim2.new(0, 150, 1, 0),
-            BackgroundTransparency = 1,
-            Text = "Cache Size (MB)",
-            TextColor3 = DEFAULT_THEME.Text,
-            TextSize = 14,
-            Font = Enum.Font.Gotham,
-            Parent = cacheSizeFrame
-        })
-        local cacheSizeValue = CreateInstance("TextBox", {
-            Size = UDim2.new(0, 40, 1, 0),
-            Position = UDim2.new(1, -50, 0, 0),
-            BackgroundColor3 = DEFAULT_THEME.Accent,
-            Text = "150",
-            TextColor3 = DEFAULT_THEME.Text,
-            TextSize = 14,
-            Font = Enum.Font.Gotham,
-            BorderSizePixel = 0,
-            Parent = cacheSizeFrame
-        })
-        CreateInstance("UICorner", {
-            CornerRadius = UDim.new(0, 5),
-            Parent = cacheSizeValue
-        })
-
-        local clearCacheButton = CreateInstance("TextButton", {
-            Size = UDim2.new(1, 0, 0, 40),
-            Position = UDim2.new(0, 0, 0, 50),
-            BackgroundColor3 = DEFAULT_THEME.Accent,
-            Text = "Clear Cache",
-            TextColor3 = DEFAULT_THEME.Text,
-            TextSize = 14,
-            Font = Enum.Font.Gotham,
-            BorderSizePixel = 0,
-            Parent = contentFrame
-        })
-        CreateInstance("UICorner", {
-            CornerRadius = UDim.new(0, 5),
-            Parent = clearCacheButton
-        })
-        clearCacheButton.MouseButton1Click:Connect(function()
-            print("Cache cleared!")
-            -- Add cache clearing logic here
-        end)
-    end
-end
-
--- Initialize the UI
-local ui = NebulaUI:Init()
-
-return NebulaUI
+return SimpleUI
