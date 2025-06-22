@@ -1,54 +1,49 @@
 -- Nazuro UI Library (Executor Edition)
--- Designed for Synapse X / Fluxus / etc.
--- Supports tabs, toggles, buttons, titlebar, and full layout
-
 local NazuroUI = {}
 
--- Services
 local uis = game:GetService("UserInputService")
 
--- Create ScreenGui
+-- Create main GUI
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "NazuroExecutorUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- Protect for Synapse
+-- Protect for exploit GUI (e.g. Synapse X)
 if syn and syn.protect_gui then
     syn.protect_gui(ScreenGui)
 end
 
 ScreenGui.Parent = game.CoreGui
 
--- Main Container Frame
+-- Main frame
 local Main = Instance.new("Frame", ScreenGui)
 Main.Size = UDim2.new(0, 620, 0, 420)
 Main.Position = UDim2.new(0.5, -310, 0.5, -210)
+Main.AnchorPoint = Vector2.new(0.5, 0.5)
 Main.BackgroundColor3 = Color3.fromRGB(30, 20, 50)
 Main.BorderSizePixel = 0
-Main.AnchorPoint = Vector2.new(0.5, 0.5)
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 6)
 
--- Title Bar
+-- Title bar
 local TitleBar = Instance.new("TextLabel", Main)
 TitleBar.Size = UDim2.new(1, 0, 0, 40)
 TitleBar.BackgroundColor3 = Color3.fromRGB(38, 26, 66)
-TitleBar.Text = "   Nazuro Executor UI Library"
+TitleBar.Text = "   Nazuro UI Library - Modern Web Edition"
 TitleBar.TextColor3 = Color3.fromRGB(220, 220, 255)
 TitleBar.Font = Enum.Font.GothamSemibold
 TitleBar.TextSize = 16
 TitleBar.TextXAlignment = Enum.TextXAlignment.Left
 TitleBar.BorderSizePixel = 0
 
--- Divider Line Under Title
+-- Divider under title
 local Line = Instance.new("Frame", Main)
 Line.Size = UDim2.new(1, 0, 0, 1)
 Line.Position = UDim2.new(0, 0, 0, 40)
 Line.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
 
--- Body Frame (holds sidebar + pages)
+-- Body container
 local BodyFrame = Instance.new("Frame", Main)
-BodyFrame.Name = "BodyFrame"
 BodyFrame.Size = UDim2.new(1, 0, 1, -41)
 BodyFrame.Position = UDim2.new(0, 0, 0, 41)
 BodyFrame.BackgroundTransparency = 1
@@ -62,14 +57,13 @@ local SidebarLayout = Instance.new("UIListLayout", Sidebar)
 SidebarLayout.Padding = UDim.new(0, 10)
 SidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
--- Dragging Support via TitleBar
+-- Draggable UI (via title bar)
 local dragging, dragInput, dragStart, startPos
 TitleBar.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
 		dragging = true
 		dragStart = input.Position
 		startPos = Main.Position
-
 		input.Changed:Connect(function()
 			if input.UserInputState == Enum.UserInputState.End then
 				dragging = false
@@ -91,7 +85,7 @@ uis.InputChanged:Connect(function(input)
 	end
 end)
 
--- Tab & Page Management
+-- Tab + Page system
 local Tabs = {}
 local Pages = {}
 
@@ -125,6 +119,7 @@ function NazuroUI:CreateTab(name)
 	return page
 end
 
+-- UI Elements
 function NazuroUI:CreateToggle(parent, labelText, callback)
 	local holder = Instance.new("Frame", parent)
 	holder.Size = UDim2.new(1, -20, 0, 30)
@@ -173,6 +168,28 @@ function NazuroUI:CreateButton(parent, text, callback)
 	btn.TextSize = 14
 	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 	btn.MouseButton1Click:Connect(callback)
+end
+
+-- NEW: Section Creator (Box Panel)
+function NazuroUI:CreateSection(parent, title)
+	local section = Instance.new("Frame", parent)
+	section.Size = UDim2.new(1, -20, 0, 160)
+	section.Position = UDim2.new(0, 10, 0, 10)
+	section.BackgroundColor3 = Color3.fromRGB(38, 26, 66)
+	section.BorderSizePixel = 0
+	Instance.new("UICorner", section).CornerRadius = UDim.new(0, 6)
+
+	local label = Instance.new("TextLabel", section)
+	label.Size = UDim2.new(1, -20, 0, 25)
+	label.Position = UDim2.new(0, 10, 0, 5)
+	label.Text = title
+	label.TextColor3 = Color3.fromRGB(220, 220, 255)
+	label.Font = Enum.Font.GothamSemibold
+	label.TextSize = 14
+	label.BackgroundTransparency = 1
+	label.TextXAlignment = Enum.TextXAlignment.Left
+
+	return section
 end
 
 return NazuroUI
