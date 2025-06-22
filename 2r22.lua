@@ -28,29 +28,33 @@ Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 6)
 local TitleBar = Instance.new("TextLabel", Main)
 TitleBar.Size = UDim2.new(1, 0, 0, 40)
 TitleBar.BackgroundColor3 = Color3.fromRGB(38, 26, 66)
-TitleBar.Text = "   Nazuro UI Library - Modern Web Edition"
+TitleBar.Text = "   Nazuro UI Library - Executor Edition"
 TitleBar.TextColor3 = Color3.fromRGB(220, 220, 255)
 TitleBar.Font = Enum.Font.GothamSemibold
 TitleBar.TextSize = 16
 TitleBar.TextXAlignment = Enum.TextXAlignment.Left
 TitleBar.BorderSizePixel = 0
+Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 6)
 
 -- Divider under title
 local Line = Instance.new("Frame", Main)
-Line.Size = UDim2.new(1, 0, 0, 1)
-Line.Position = UDim2.new(0, 0, 0, 40)
+Line.Size = UDim2.new(1, -12, 0, 1)
+Line.Position = UDim2.new(0, 6, 0, 40)
 Line.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
+Instance.new("UICorner", Line).CornerRadius = UDim.new(0, 0.5)
 
 -- Body container
 local BodyFrame = Instance.new("Frame", Main)
 BodyFrame.Size = UDim2.new(1, 0, 1, -41)
 BodyFrame.Position = UDim2.new(0, 0, 0, 41)
 BodyFrame.BackgroundTransparency = 1
+Instance.new("UICorner", BodyFrame).CornerRadius = UDim.new(0, 6)
 
 -- Sidebar
 local Sidebar = Instance.new("Frame", BodyFrame)
 Sidebar.Size = UDim2.new(0, 120, 1, 0)
 Sidebar.BackgroundColor3 = Color3.fromRGB(22, 15, 40)
+Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0, 6)
 
 local SidebarLayout = Instance.new("UIListLayout", Sidebar)
 SidebarLayout.Padding = UDim.new(0, 10)
@@ -104,6 +108,7 @@ function NazuroUI:CreateTab(name)
     page.Position = UDim2.new(0, 120, 0, 0)
     page.BackgroundTransparency = 1
     page.Visible = false
+    Instance.new("UICorner", page).CornerRadius = UDim.new(0, 6)
 
     Tabs[name] = button
     Pages[name] = page
@@ -124,6 +129,7 @@ function NazuroUI:CreateToggle(parent, labelText, callback)
     holder.Size = UDim2.new(1, -20, 0, 30)
     holder.Position = UDim2.new(0, 10, 0, 0)
     holder.BackgroundTransparency = 1
+    Instance.new("UICorner", holder).CornerRadius = UDim.new(0, 6)
 
     local label = Instance.new("TextLabel", holder)
     label.Text = labelText
@@ -139,13 +145,13 @@ function NazuroUI:CreateToggle(parent, labelText, callback)
     toggle.Position = UDim2.new(1, -50, 0.5, -10)
     toggle.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
     toggle.Text = ""
+    Instance.new("UICorner", toggle).CornerRadius = UDim.new(1, 0)
 
     local knob = Instance.new("Frame", toggle)
     knob.Size = UDim2.new(0.5, -2, 1, -4)
     knob.Position = UDim2.new(0, 2, 0, 2)
     knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
-    Instance.new("UICorner", toggle).CornerRadius = UDim.new(1, 0)
 
     local toggled = false
     toggle.MouseButton1Click:Connect(function()
@@ -190,77 +196,5 @@ function NazuroUI:CreateSection(parent, title)
 
     return section
 end
-
--- NEW: Create Slider function
-function NazuroUI:CreateSlider(parent, labelText, minValue, maxValue, defaultValue, callback)
-    local holder = Instance.new("Frame", parent)
-    holder.Size = UDim2.new(1, -20, 0, 50)
-    holder.Position = UDim2.new(0, 10, 0, 0)
-    holder.BackgroundTransparency = 1
-
-    local label = Instance.new("TextLabel", holder)
-    label.Text = labelText
-    label.Size = UDim2.new(1, 0, 0, 20)
-    label.BackgroundTransparency = 1
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.Font = Enum.Font.Gotham
-    label.TextSize = 14
-    label.TextXAlignment = Enum.TextXAlignment.Left
-
-    local slider = Instance.new("Frame", holder)
-    slider.Size = UDim2.new(1, 0, 0, 5)
-    slider.Position = UDim2.new(0, 0, 0, 25)
-    slider.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
-    Instance.new("UICorner", slider).CornerRadius = UDim.new(1, 0)
-
-    local fill = Instance.new("Frame", slider)
-    fill.Size = UDim2.new((defaultValue - minValue) / (maxValue - minValue), 0, 1, 0)
-    fill.BackgroundColor3 = Color3.fromRGB(140, 90, 255)
-    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
-
-    local knob = Instance.new("TextButton", slider)
-    knob.Size = UDim2.new(0, 15, 0, 15)
-    knob.Position = UDim2.new((defaultValue - minValue) / (maxValue - minValue), -7.5, 0.5, -7.5)
-    knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    knob.Text = ""
-    knob.ZIndex = 2
-    Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
-
-    local valueLabel = Instance.new("TextLabel", holder)
-    valueLabel.Size = UDim2.new(0, 50, 0, 20)
-    valueLabel.Position = UDim2.new(1, -50, 0, 25)
-    valueLabel.Text = tostring(defaultValue)
-    valueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    valueLabel.Font = Enum.Font.Gotham
-    valueLabel.TextSize = 14
-    valueLabel.BackgroundTransparency = 1
-    valueLabel.TextXAlignment = Enum.TextXAlignment.Right
-
-    local dragging = false
-    knob.MouseButton1Down:Connect(function()
-        dragging = true
-    end)
-
-    uis.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
-    end)
-
-    uis.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local xPos = (input.Position.X - slider.AbsolutePosition.X) / slider.AbsoluteSize.X
-            xPos = math.clamp(xPos, 0, 1)
-            local value = math.floor(minValue + (maxValue - minValue) * xPos)
-            
-            fill.Size = UDim2.new(xPos, 0, 1, 0)
-            knob.Position = UDim2.new(xPos, -7.5, 0.5, -7.5)
-            valueLabel.Text = tostring(value)
-            
-            if callback then callback(value) end
-        end
-    end)
-end
-
 
 return NazuroUI
